@@ -1,0 +1,176 @@
+{
+  "name": "Weather Information Retrieval",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "weather",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract location from the webhook data\nconst location = $input.item.json.location || \"New York\";\n\n// Return the location for the HTTP Request node\nreturn {\n  location\n};"
+      },
+      "name": "Process Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.openweathermap.org/data/2.5/weather?q={{$node[\"Process Input\"].json[\"location\"]}}&units=metric&appid=YOUR_OPENWEATHERMAP_API_KEY",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "name": "Get Weather Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process the weather data from the API response\nconst weatherData = $input.item.json;\n\n// Format the response in a user-friendly way\nconst response = {\n  location: weatherData.name + \", \" + weatherData.sys.country,\n  description: weatherData.weather[0].description,\n  temperature: {\n    current: Math.round(weatherData.main.temp) + \"°C\",\n    feels_like: Math.round(weatherData.main.feels_like) + \"°C\",\n    min: Math.round(weatherData.main.temp_min) + \"°C\",\n    max: Math.round(weatherData.main.temp_max) + \"°C\"\n  },\n  humidity: weatherData.main.humidity + \"%\",\n  wind: {\n    speed: weatherData.wind.speed + \" m/s\",\n    direction: weatherData.wind.deg + \"°\"\n  },\n  sunrise: new Date(weatherData.sys.sunrise * 1000).toLocaleTimeString(),\n  sunset: new Date(weatherData.sys.sunset * 1000).toLocaleTimeString(),\n  timestamp: new Date().toISOString()\n};\n\nreturn response;"
+      },
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$node[\"Format Response\"].json}}",
+        "options": {}
+      },
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.mongodb.com/app/data-xxxxx/endpoint/data/v1/action/insertOne",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "dataSource",
+              "value": "Cluster0"
+            },
+            {
+              "name": "database",
+              "value": "everleigh"
+            },
+            {
+              "name": "collection",
+              "value": "weather_queries"
+            },
+            {
+              "name": "document",
+              "value": "={{$node[\"Format Response\"].json}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Log to MongoDB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3.1,
+      "position": [
+        1050,
+        500
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Input": {
+      "main": [
+        [
+          {
+            "node": "Get Weather Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Weather Data": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log to MongoDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "weather-workflow",
+  "meta": {
+    "instanceId": "everleigh-weather-workflow"
+  },
+  "tags": [
+    {
+      "name": "everleigh"
+    },
+    {
+      "name": "weather"
+    }
+  ]
+} 

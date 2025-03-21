@@ -1,0 +1,349 @@
+{
+  "name": "Calendar Integration",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "calendar",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract operation and parameters from the webhook data\nconst data = $input.item.json;\n\n// Default operation is list events if not specified\nconst operation = data.operation || \"listEvents\";\n\n// Process based on the requested operation\nlet params = {};\n\nswitch (operation) {\n  case \"listEvents\":\n    // Parameters for listing events\n    params = {\n      operation,\n      timeMin: data.timeMin || new Date().toISOString(),  // Default to now\n      timeMax: data.timeMax || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default to a week from now\n      maxResults: data.maxResults || 10\n    };\n    break;\n    \n  case \"createEvent\":\n    // Parameters for creating an event\n    params = {\n      operation,\n      summary: data.summary || \"New Event\",\n      description: data.description || \"\",\n      location: data.location || \"\",\n      startDateTime: data.startDateTime,\n      endDateTime: data.endDateTime,\n      attendees: data.attendees || []\n    };\n    break;\n    \n  case \"deleteEvent\":\n    // Parameters for deleting an event\n    params = {\n      operation,\n      eventId: data.eventId\n    };\n    break;\n    \n  default:\n    // Unknown operation\n    throw new Error(`Unknown operation: ${operation}`);\n}\n\nreturn params;"
+      },
+      "name": "Process Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "=calendar",
+        "calendar": "primary",
+        "options": {}
+      },
+      "name": "Google Calendar",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "google-calendar-oauth2",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$node[\"Process Input\"].json[\"operation\"]}}",
+              "operation": "equal",
+              "value2": "listEvents"
+            }
+          ]
+        }
+      },
+      "name": "List Events?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$node[\"Process Input\"].json[\"operation\"]}}",
+              "operation": "equal",
+              "value2": "createEvent"
+            }
+          ]
+        }
+      },
+      "name": "Create Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        850,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "calendar": "primary",
+        "timeMin": "={{$node[\"Process Input\"].json[\"timeMin\"]}}",
+        "timeMax": "={{$node[\"Process Input\"].json[\"timeMax\"]}}",
+        "maxResults": "={{$node[\"Process Input\"].json[\"maxResults\"]}}",
+        "options": {
+          "singleEvents": true,
+          "orderBy": "startTime"
+        }
+      },
+      "name": "List Events",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "google-calendar-oauth2",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": "primary",
+        "summary": "={{$node[\"Process Input\"].json[\"summary\"]}}",
+        "description": "={{$node[\"Process Input\"].json[\"description\"]}}",
+        "location": "={{$node[\"Process Input\"].json[\"location\"]}}",
+        "start": "={{$node[\"Process Input\"].json[\"startDateTime\"]}}",
+        "end": "={{$node[\"Process Input\"].json[\"endDateTime\"]}}",
+        "additionalFields": {
+          "attendees": "={{$node[\"Process Input\"].json[\"attendees\"]}}"
+        }
+      },
+      "name": "Create Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        400
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "google-calendar-oauth2",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": "primary",
+        "eventId": "={{$node[\"Process Input\"].json[\"eventId\"]}}"
+      },
+      "name": "Delete Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        600
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "google-calendar-oauth2",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format the calendar response to be user-friendly\nconst data = $input.item.json;\nlet response;\n\nconst operation = $node[\"Process Input\"].json.operation;\n\nswitch (operation) {\n  case \"listEvents\":\n    // Format list of events\n    response = {\n      success: true,\n      operation: \"listEvents\",\n      events: data.map(event => ({\n        id: event.id,\n        summary: event.summary,\n        description: event.description,\n        location: event.location,\n        start: event.start,\n        end: event.end,\n        link: event.htmlLink\n      }))\n    };\n    \n    // Add a user-friendly message if no events\n    if (response.events.length === 0) {\n      response.message = \"No upcoming events found.\";\n    } else {\n      response.message = `Found ${response.events.length} upcoming events.`;\n    }\n    break;\n    \n  case \"createEvent\":\n    // Format created event response\n    response = {\n      success: true,\n      operation: \"createEvent\",\n      message: \"Event created successfully.\",\n      event: {\n        id: data.id,\n        summary: data.summary,\n        description: data.description,\n        location: data.location,\n        start: data.start,\n        end: data.end,\n        link: data.htmlLink\n      }\n    };\n    break;\n    \n  case \"deleteEvent\":\n    // Format delete event response\n    response = {\n      success: true,\n      operation: \"deleteEvent\",\n      message: \"Event deleted successfully.\",\n      eventId: $node[\"Process Input\"].json.eventId\n    };\n    break;\n    \n  default:\n    // Unknown operation response\n    response = {\n      success: false,\n      message: `Operation '${operation}' not supported.`\n    };\n}\n\nreturn response;"
+      },
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$node[\"Format Response\"].json}}",
+        "options": {}
+      },
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.mongodb.com/app/data-xxxxx/endpoint/data/v1/action/insertOne",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "dataSource",
+              "value": "Cluster0"
+            },
+            {
+              "name": "database",
+              "value": "everleigh"
+            },
+            {
+              "name": "collection",
+              "value": "calendar_operations"
+            },
+            {
+              "name": "document",
+              "value": "={\n  \"operation\": \"{{$node[\"Process Input\"].json[\"operation\"]}}\",\n  \"response\": {{$node[\"Format Response\"].json}},\n  \"timestamp\": \"{{$now}}\"\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Log to MongoDB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3.1,
+      "position": [
+        1450,
+        500
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Input": {
+      "main": [
+        [
+          {
+            "node": "List Events?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Events?": {
+      "main": [
+        [
+          {
+            "node": "List Events",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Event?": {
+      "main": [
+        [
+          {
+            "node": "Create Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Delete Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Events": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Event": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Event": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log to MongoDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "calendar-workflow",
+  "meta": {
+    "instanceId": "everleigh-calendar-workflow"
+  },
+  "tags": [
+    {
+      "name": "everleigh"
+    },
+    {
+      "name": "calendar"
+    }
+  ]
+} 

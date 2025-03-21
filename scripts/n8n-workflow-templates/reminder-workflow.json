@@ -1,0 +1,650 @@
+{
+  "name": "Reminder System",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "reminders",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract operation and parameters from the webhook data\nconst data = $input.item.json;\n\n// Default operation is create if not specified\nconst operation = data.operation || \"create\";\n\n// Process based on the requested operation\nlet params = {\n  operation\n};\n\nswitch (operation) {\n  case \"create\":\n    // Parameters for creating a reminder\n    params = {\n      ...params,\n      title: data.title || \"Reminder\",\n      description: data.description || \"\",\n      dueDate: data.dueDate, // Required field with ISO date\n      priority: data.priority || \"medium\", // low, medium, high\n      tags: data.tags || [],\n      repeat: data.repeat || null, // daily, weekly, monthly, or null for one-time\n      notifyMinutesBefore: data.notifyMinutesBefore || 30\n    };\n    \n    // Validate the due date field\n    if (!params.dueDate) {\n      throw new Error(\"dueDate is required for creating a reminder\");\n    }\n    \n    // Convert due date string to Date object to validate\n    try {\n      const dueDate = new Date(params.dueDate);\n      if (isNaN(dueDate.getTime())) {\n        throw new Error(\"Invalid dueDate format. Use ISO 8601 format (YYYY-MM-DDTHH:MM:SS.sssZ)\");\n      }\n    } catch (error) {\n      throw new Error(\"Invalid dueDate format. Use ISO 8601 format (YYYY-MM-DDTHH:MM:SS.sssZ)\");\n    }\n    break;\n    \n  case \"list\":\n    // Parameters for listing reminders\n    params = {\n      ...params,\n      status: data.status || \"pending\", // pending, completed, all\n      sortBy: data.sortBy || \"dueDate\", // dueDate, priority, title\n      sortOrder: data.sortOrder || \"asc\", // asc, desc\n      limit: data.limit || 10,\n      skip: data.skip || 0\n    };\n    break;\n    \n  case \"complete\":\n    // Parameters for marking a reminder as complete\n    params = {\n      ...params,\n      reminderId: data.reminderId\n    };\n    \n    // Validate reminder ID\n    if (!params.reminderId) {\n      throw new Error(\"reminderId is required for completing a reminder\");\n    }\n    break;\n    \n  case \"delete\":\n    // Parameters for deleting a reminder\n    params = {\n      ...params,\n      reminderId: data.reminderId\n    };\n    \n    // Validate reminder ID\n    if (!params.reminderId) {\n      throw new Error(\"reminderId is required for deleting a reminder\");\n    }\n    break;\n    \n  default:\n    // Unknown operation\n    throw new Error(`Unknown operation: ${operation}`);\n}\n\nreturn params;"
+      },
+      "name": "Process Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$node[\"Process Input\"].json[\"operation\"]}}",
+              "operation": "equal",
+              "value2": "create"
+            }
+          ]
+        }
+      },
+      "name": "Create?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$node[\"Process Input\"].json[\"operation\"]}}",
+              "operation": "equal",
+              "value2": "list"
+            }
+          ]
+        }
+      },
+      "name": "List?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        650,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$node[\"Process Input\"].json[\"operation\"]}}",
+              "operation": "equal",
+              "value2": "complete"
+            }
+          ]
+        }
+      },
+      "name": "Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        650,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.mongodb.com/app/data-xxxxx/endpoint/data/v1/action/insertOne",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "dataSource",
+              "value": "Cluster0"
+            },
+            {
+              "name": "database",
+              "value": "everleigh"
+            },
+            {
+              "name": "collection",
+              "value": "reminders"
+            },
+            {
+              "name": "document",
+              "value": "={\n  \"title\": \"{{$node[\"Process Input\"].json[\"title\"]}}\",\n  \"description\": \"{{$node[\"Process Input\"].json[\"description\"]}}\",\n  \"dueDate\": \"{{$node[\"Process Input\"].json[\"dueDate\"]}}\",\n  \"priority\": \"{{$node[\"Process Input\"].json[\"priority\"]}}\",\n  \"tags\": {{$node[\"Process Input\"].json[\"tags\"]}},\n  \"repeat\": {{$node[\"Process Input\"].json[\"repeat\"]}},\n  \"notifyMinutesBefore\": {{$node[\"Process Input\"].json[\"notifyMinutesBefore\"]}},\n  \"status\": \"pending\",\n  \"createdAt\": \"{{$now}}\",\n  \"updatedAt\": \"{{$now}}\"\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Create Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3.1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.mongodb.com/app/data-xxxxx/endpoint/data/v1/action/find",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "dataSource",
+              "value": "Cluster0"
+            },
+            {
+              "name": "database",
+              "value": "everleigh"
+            },
+            {
+              "name": "collection",
+              "value": "reminders"
+            },
+            {
+              "name": "filter",
+              "value": "={{$node[\"Process Input\"].json[\"status\"] === \"all\" ? {} : {\"status\": $node[\"Process Input\"].json[\"status\"]}}}"
+            },
+            {
+              "name": "sort",
+              "value": "={{{\n  [$node[\"Process Input\"].json[\"sortBy\"]]: $node[\"Process Input\"].json[\"sortOrder\"] === \"asc\" ? 1 : -1\n}}}"
+            },
+            {
+              "name": "limit",
+              "value": "={{$node[\"Process Input\"].json[\"limit\"]}}"
+            },
+            {
+              "name": "skip",
+              "value": "={{$node[\"Process Input\"].json[\"skip\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "List Reminders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3.1,
+      "position": [
+        850,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.mongodb.com/app/data-xxxxx/endpoint/data/v1/action/updateOne",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "dataSource",
+              "value": "Cluster0"
+            },
+            {
+              "name": "database",
+              "value": "everleigh"
+            },
+            {
+              "name": "collection",
+              "value": "reminders"
+            },
+            {
+              "name": "filter",
+              "value": "={\n  \"_id\": { \"$oid\": \"{{$node[\"Process Input\"].json[\"reminderId\"]}}\" }\n}"
+            },
+            {
+              "name": "update",
+              "value": "={\n  \"$set\": {\n    \"status\": \"completed\",\n    \"completedAt\": \"{{$now}}\",\n    \"updatedAt\": \"{{$now}}\"\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Complete Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3.1,
+      "position": [
+        850,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.mongodb.com/app/data-xxxxx/endpoint/data/v1/action/deleteOne",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "dataSource",
+              "value": "Cluster0"
+            },
+            {
+              "name": "database",
+              "value": "everleigh"
+            },
+            {
+              "name": "collection",
+              "value": "reminders"
+            },
+            {
+              "name": "filter",
+              "value": "={\n  \"_id\": { \"$oid\": \"{{$node[\"Process Input\"].json[\"reminderId\"]}}\" }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Delete Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3.1,
+      "position": [
+        850,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format the response based on the operation\nconst data = $input.item.json;\nlet response;\n\nconst operation = $node[\"Process Input\"].json.operation;\n\nswitch (operation) {\n  case \"create\":\n    // Format create reminder response\n    response = {\n      success: true,\n      operation: \"create\",\n      message: \"Reminder created successfully.\",\n      reminder: {\n        id: data.insertedId,\n        title: $node[\"Process Input\"].json.title,\n        description: $node[\"Process Input\"].json.description,\n        dueDate: $node[\"Process Input\"].json.dueDate,\n        priority: $node[\"Process Input\"].json.priority,\n        status: \"pending\"\n      }\n    };\n    break;\n    \n  case \"list\":\n    // Format list reminders response\n    response = {\n      success: true,\n      operation: \"list\",\n      reminders: data.documents.map(reminder => ({\n        id: reminder._id,\n        title: reminder.title,\n        description: reminder.description,\n        dueDate: reminder.dueDate,\n        priority: reminder.priority,\n        status: reminder.status,\n        tags: reminder.tags,\n        repeat: reminder.repeat,\n        createdAt: reminder.createdAt,\n        completedAt: reminder.completedAt\n      })),\n      count: data.documents.length,\n      message: data.documents.length === 0 ? \"No reminders found.\" : `Found ${data.documents.length} reminders.`\n    };\n    break;\n    \n  case \"complete\":\n    // Format complete reminder response\n    response = {\n      success: data.matchedCount > 0,\n      operation: \"complete\",\n      message: data.matchedCount > 0 ? \"Reminder marked as completed.\" : \"Reminder not found.\",\n      reminderId: $node[\"Process Input\"].json.reminderId\n    };\n    break;\n    \n  case \"delete\":\n    // Format delete reminder response\n    response = {\n      success: data.deletedCount > 0,\n      operation: \"delete\",\n      message: data.deletedCount > 0 ? \"Reminder deleted successfully.\" : \"Reminder not found.\",\n      reminderId: $node[\"Process Input\"].json.reminderId\n    };\n    break;\n    \n  default:\n    // Unknown operation response\n    response = {\n      success: false,\n      message: `Operation '${operation}' not supported.`\n    };\n}\n\nreturn response;"
+      },
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$node[\"Format Response\"].json}}",
+        "options": {}
+      },
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 15,
+              "unit": "minutes"
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        1100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.mongodb.com/app/data-xxxxx/endpoint/data/v1/action/find",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "dataSource",
+              "value": "Cluster0"
+            },
+            {
+              "name": "database",
+              "value": "everleigh"
+            },
+            {
+              "name": "collection",
+              "value": "reminders"
+            },
+            {
+              "name": "filter",
+              "value": "={\n  \"status\": \"pending\",\n  \"dueDate\": {\n    \"$gt\": \"{{$now}}\",\n    \"$lt\": \"{{$isoTimestamp($now + $jmespath($json, '[0, 90].*60*1000') | max)}}\"\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Find Due Reminders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3.1,
+      "position": [
+        450,
+        1100
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Split Reminders",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        650,
+        1100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.OPENAI_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4o"
+            },
+            {
+              "name": "messages",
+              "value": "=[\n  {\n    \"role\": \"system\",\n    \"content\": \"You are a helpful reminder assistant. Create a notification message for a due reminder.\"\n  },\n  {\n    \"role\": \"user\",\n    \"content\": \"Generate a reminder notification for the following task: Title: {{$node[\"Split Reminders\"].json[\"title\"]}}, Description: {{$node[\"Split Reminders\"].json[\"description\"]}}, Due Date: {{$node[\"Split Reminders\"].json[\"dueDate\"]}}, Priority: {{$node[\"Split Reminders\"].json[\"priority\"]}}\"\n  }\n]"
+            },
+            {
+              "name": "max_tokens",
+              "value": 150
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Generate Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3.1,
+      "position": [
+        850,
+        1100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract the notification text from the OpenAI response\nconst notification = $input.item.json.choices[0].message.content;\n\n// Get the reminder details\nconst reminder = $node[\"Split Reminders\"].json;\n\nreturn {\n  reminder,\n  notification,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "name": "Prepare Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        1100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.mongodb.com/app/data-xxxxx/endpoint/data/v1/action/insertOne",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "dataSource",
+              "value": "Cluster0"
+            },
+            {
+              "name": "database",
+              "value": "everleigh"
+            },
+            {
+              "name": "collection",
+              "value": "notifications"
+            },
+            {
+              "name": "document",
+              "value": "={\n  \"reminderId\": \"{{$node[\"Prepare Notification\"].json[\"reminder\"][\"_id\"]}}\",\n  \"title\": \"{{$node[\"Prepare Notification\"].json[\"reminder\"][\"title\"]}}\",\n  \"message\": \"{{$node[\"Prepare Notification\"].json[\"notification\"]}}\",\n  \"timestamp\": \"{{$node[\"Prepare Notification\"].json[\"timestamp\"]}}\",\n  \"status\": \"pending\"\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Save Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3.1,
+      "position": [
+        1250,
+        1100
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Input": {
+      "main": [
+        [
+          {
+            "node": "Create?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create?": {
+      "main": [
+        [
+          {
+            "node": "Create Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "List?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List?": {
+      "main": [
+        [
+          {
+            "node": "List Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete?": {
+      "main": [
+        [
+          {
+            "node": "Complete Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Delete Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Reminder": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Reminders": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Reminder": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Reminder": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Find Due Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Due Reminders": {
+      "main": [
+        [
+          {
+            "node": "Split Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Reminders": {
+      "main": [
+        [
+          {
+            "node": "Generate Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Notification": {
+      "main": [
+        [
+          {
+            "node": "Prepare Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Notification": {
+      "main": [
+        [
+          {
+            "node": "Save Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "reminder-workflow",
+  "meta": {
+    "instanceId": "everleigh-reminder-workflow"
+  },
+  "tags": [
+    {
+      "name": "everleigh"
+    },
+    {
+      "name": "reminders"
+    }
+  ]
+}
