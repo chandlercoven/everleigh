@@ -1,0 +1,8 @@
+# Everleigh API monitoring - every 15 minutes
+*/15 * * * * /var/www/html/everleigh/scripts/monitor-api.sh > /dev/null 2>&1
+
+# Database backup - daily at 2 AM
+0 2 * * * /var/www/html/everleigh/scripts/backup-db.sh > /dev/null 2>&1
+
+# Clean old logs - weekly on Sunday at 3 AM
+0 3 * * 0 find /var/log/everleigh -name "*.log" -type f -mtime +30 -delete 
