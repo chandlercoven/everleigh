@@ -5,6 +5,9 @@ import {
   deleteConversation,
   updateConversationTitle
 } from '../../../lib/database';
+import { cacheMiddleware } from '../../../lib/middleware/cacheMiddleware';
+import { apiLimiter } from '../../../lib/middleware/rateLimiter';
+import { del } from '../../../lib/cache';
 
 async function handler(req, res) {
   const conversationId = req.query.id;
@@ -51,6 +54,9 @@ async function handler(req, res) {
       
       const updatedConversation = await addMessage(conversationId, role, content);
       
+      // Invalidate caches related to this conversation
+      invalidateConversationCaches(userId, conversationId);
+      
       return res.status(201).json({
         success: true,
         data: {
@@ -73,6 +79,9 @@ async function handler(req, res) {
       
       const updatedConversation = await updateConversationTitle(conversationId, title);
       
+      // Invalidate caches related to this conversation
+      invalidateConversationCaches(userId, conversationId);
+      
       return res.status(200).json({
         success: true,
         data: {
@@ -84,6 +93,9 @@ async function handler(req, res) {
     // DELETE conversation
     if (req.method === 'DELETE') {
       await deleteConversation(conversationId);
+      
+      // Invalidate caches related to this conversation
+      invalidateConversationCaches(userId, conversationId);
       
       return res.status(200).json({
         success: true,
@@ -103,4 +115,30 @@ async function handler(req, res) {
   }
 }
 
-export default withAuth(handler); 
+/**
+ * Helper function to invalidate conversation-related caches
+ */
+function invalidateConversationCaches(userId, conversationId) {
+  // Clear conversation list cache patterns
+  const cacheKeys = [
+    `api:short:path:/api/conversations`,
+    `api:short:path:/api/conversations?`, 
+    `api:standard:path:/api/conversations/${conversationId}`
+  ];
+  
+  cacheKeys.forEach(keyPattern => {
+    // Use cache.keys() to find all keys that start with the pattern
+    const keys = Object.keys(require('../../../lib/cache').default.getStats().keys)
+      .filter(key => key.startsWith(keyPattern));
+    
+    // Delete all matching keys
+    keys.forEach(key => del(key));
+  });
+}
+
+// Apply middleware chain
+export default apiLimiter.standard(
+  cacheMiddleware.standard(
+    withAuth(handler)
+  )
+); 

@@ -2,11 +2,14 @@
   "name": "everleigh",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "setup:db": "node scripts/setup-mongodb.js",
+    "postinstall": "npm run setup:db"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +23,7 @@
     "@livekit/agents-plugin-silero": "^0.5.5",
     "@livekit/components-react": "^2.8.1",
     "@livekit/components-styles": "^1.1.4",
+    "express-rate-limit": "^7.5.0",
     "formidable": "^3.5.1",
     "livekit-client": "^2.9.8",
     "livekit-server-sdk": "^1.2.6",
@@ -28,6 +32,7 @@
     "n8n": "^1.83.2",
     "next": "^15.2.3",
     "next-auth": "^4.24.11",
+    "node-cache": "^5.1.2",
     "openai": "^4.28.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

@@ -3,6 +3,15 @@
  */
 
 import { withAuth } from '../../../lib/auth';
+import { apiLimiter } from '../../../lib/middleware/rateLimiter';
+
+// Apply rate limiter to this sensitive endpoint
+export const config = {
+  api: {
+    bodyParser: true,
+    externalResolver: true
+  }
+};
 
 // Map of supported workflow types to their n8n webhook URLs
 // In a production environment, this would be stored in a database or environment variables
@@ -19,7 +28,8 @@ const CALLBACK_URL = process.env.NEXTAUTH_URL
   ? `${process.env.NEXTAUTH_URL}/api/workflows/callback` 
   : 'http://localhost:3000/api/workflows/callback';
 
-async function handler(req, res) {
+// Apply the rate limiter and then the auth middleware
+const handler = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -86,6 +96,7 @@ async function handler(req, res) {
       error: 'Failed to trigger workflow'
     });
   }
-}
+};
 
-export default withAuth(handler); 
+// Chain middlewares - first rate limiting, then authentication
+export default apiLimiter.sensitive(withAuth(handler)); 
