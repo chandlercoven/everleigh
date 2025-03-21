@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_HOST=localhost
+      - DB_TYPE=mongodb
+      - DB_MONGODB_CONNECTION_URL=mongodb://everleighAdmin:EverleighAdmin2685a57376c7f8ab@host.docker.internal:27017/n8n?authSource=admin
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=EverleighN8n
+    volumes:
+      - /opt/n8n:/home/node/.n8n
+    extra_hosts:
+      - "host.docker.internal:host-gateway" 
