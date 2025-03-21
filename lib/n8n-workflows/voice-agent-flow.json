@@ -1,0 +1,327 @@
+{
+  "name": "Voice Agent Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "voice-agent-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract user message\nconst userMessage = $input.item.json.body.message;\n\n// Simple intent detection\nlet intent = 'general';\nif (userMessage.includes('weather')) {\n  intent = 'weather';\n} else if (userMessage.includes('time') || userMessage.includes('date')) {\n  intent = 'time';\n} else if (userMessage.includes('help')) {\n  intent = 'help';\n}\n\nreturn {\n  intent,\n  userMessage,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "2",
+      "name": "Intent Detection",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"intent\"]}}",
+              "operation": "equals",
+              "value2": "weather"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "Weather Intent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"intent\"]}}",
+              "operation": "equals",
+              "value2": "time"
+            }
+          ]
+        }
+      },
+      "id": "4",
+      "name": "Time Intent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        650,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openweathermap.org/data/2.5/weather",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "queryAuth",
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "London"
+            },
+            {
+              "name": "appid",
+              "value": "YOUR_API_KEY"
+            }
+          ]
+        }
+      },
+      "id": "5",
+      "name": "Get Weather",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format current time\nconst now = new Date();\nconst formattedTime = now.toLocaleTimeString();\nconst formattedDate = now.toLocaleDateString();\n\nreturn {\n  response: `The current time is ${formattedTime} on ${formattedDate}.`,\n  intent: $input.item.json.intent,\n  userMessage: $input.item.json.userMessage\n};"
+      },
+      "id": "6",
+      "name": "Get Time",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format weather response\nconst weather = $input.item.json;\nconst temp = Math.round(weather.main.temp - 273.15); // Convert from Kelvin to Celsius\n\nreturn {\n  response: `The current weather in ${weather.name} is ${weather.weather[0].description} with a temperature of ${temp}°C.`,\n  intent: 'weather',\n  userMessage: $input.prev.item.json.userMessage\n};"
+      },
+      "id": "7",
+      "name": "Format Weather",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Default response\nreturn {\n  response: `I'm sorry, I don't have specific information about that. How can I help you with something else?`,\n  intent: $input.item.json.intent,\n  userMessage: $input.item.json.userMessage\n};"
+      },
+      "id": "8",
+      "name": "Default Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "response",
+              "value": "={{ $json.response }}"
+            },
+            {
+              "name": "intent",
+              "value": "={{ $json.intent }}"
+            },
+            {
+              "name": "userMessage",
+              "value": "={{ $json.userMessage }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWithData": true,
+        "responseData": "={{ {success: true, data: $json} }}"
+      },
+      "id": "10",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "dummy-conversation-id",
+          "mode": "list"
+        },
+        "fields": {}
+      },
+      "id": "11",
+      "name": "Save to Database",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        500
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Intent Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Detection": {
+      "main": [
+        [
+          {
+            "node": "Weather Intent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weather Intent?": {
+      "main": [
+        [
+          {
+            "node": "Get Weather",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Time Intent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Time Intent?": {
+      "main": [
+        [
+          {
+            "node": "Get Time",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Default Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Weather": {
+      "main": [
+        [
+          {
+            "node": "Format Weather",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Time": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Weather": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Response": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Save to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+} 
