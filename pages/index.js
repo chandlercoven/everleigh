@@ -2,6 +2,7 @@ import Head from 'next/head';
 import { useState } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import VoiceChat from '../components/VoiceChat';
+import VoiceLabChat from '../components/VoiceLabChat';
 import AgentWorkflow from '../components/AgentWorkflow';
 import { voiceAgentInfo } from '../lib/voiceAgent';
 import { useRouter } from 'next/router';
@@ -9,14 +10,15 @@ import { useRouter } from 'next/router';
 export default function Home() {
   const { data: session } = useSession();
   const [showVoiceChat, setShowVoiceChat] = useState(false);
+  const [showLabChat, setShowLabChat] = useState(true);
   const [showWorkflow, setShowWorkflow] = useState(false);
   const router = useRouter();
 
   return (
     <div className="container">
       <Head>
-        <title>Everleigh - Voice AI Project</title>
-        <meta name="description" content="Voice AI project using LiveKit" />
+        <title>Everleigh - Voice AI Lab</title>
+        <meta name="description" content="Voice AI project using LiveKit and Eleven Labs" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
@@ -36,7 +38,7 @@ export default function Home() {
           {session ? (
             <div className="user-section">
               <span className="user-name">
-                {session.user.name || session.user.email}
+                {session.user && (session.user.name || session.user.email || 'User')}
               </span>
               <button 
                 onClick={() => signOut({ callbackUrl: '/' })} 
@@ -57,66 +59,87 @@ export default function Home() {
       </header>
 
       <main>
-        <h1>Welcome to Everleigh</h1>
-        <p>A voice AI project powered by LiveKit</p>
-
-        <div className="features">
-          <h2>Capabilities</h2>
-          <ul>
-            {voiceAgentInfo.capabilities.map((capability, index) => (
-              <li key={index}>{capability}</li>
-            ))}
-          </ul>
-        </div>
+        <h1>Everleigh Voice AI Lab</h1>
+        <p>Test voice interactions with animated speaking visualizations</p>
 
         <div className="action-buttons">
           <button 
-            onClick={() => setShowVoiceChat(!showVoiceChat)}
-            className="action-button voice-button"
+            onClick={() => {
+              setShowLabChat(!showLabChat);
+              if (!showLabChat) {
+                setShowVoiceChat(false);
+                setShowWorkflow(false);
+              }
+            }}
+            className={`action-button lab-button ${showLabChat ? 'active' : ''}`}
           >
-            {showVoiceChat ? 'Hide Voice Chat' : 'Try Voice Chat'}
+            {showLabChat ? 'Hide Lab Interface' : 'Show Lab Interface'}
           </button>
 
-          <button 
-            onClick={() => setShowWorkflow(!showWorkflow)}
-            className="action-button workflow-button"
-          >
-            {showWorkflow ? 'Hide Workflow Test' : 'Try n8n Workflow'}
-          </button>
-          
           {session && (
-            <button 
-              onClick={() => router.push('/conversations')}
-              className="action-button history-button"
-            >
-              View Conversation History
-            </button>
+            <>
+              <button 
+                onClick={() => {
+                  setShowVoiceChat(!showVoiceChat);
+                  if (!showVoiceChat) {
+                    setShowLabChat(false);
+                    setShowWorkflow(false);
+                  }
+                }}
+                className={`action-button voice-button ${showVoiceChat ? 'active' : ''}`}
+              >
+                {showVoiceChat ? 'Hide Voice Chat' : 'Try Voice Chat'}
+              </button>
+
+              <button 
+                onClick={() => {
+                  setShowWorkflow(!showWorkflow);
+                  if (!showWorkflow) {
+                    setShowVoiceChat(false);
+                    setShowLabChat(false);
+                  }
+                }}
+                className={`action-button workflow-button ${showWorkflow ? 'active' : ''}`}
+              >
+                {showWorkflow ? 'Hide Workflow Test' : 'Try n8n Workflow'}
+              </button>
+              
+              <button 
+                onClick={() => router.push('/conversations')}
+                className="action-button history-button"
+              >
+                View Conversation History
+              </button>
+            </>
           )}
         </div>
 
-        {showVoiceChat && <VoiceChat />}
-        {showWorkflow && <AgentWorkflow />}
+        {showLabChat && <VoiceLabChat />}
+        {showVoiceChat && session && <VoiceChat />}
+        {showWorkflow && session && <AgentWorkflow />}
       </main>
 
       <style jsx>{`
         .container {
-          padding: 0;
-          max-width: 800px;
-          margin: 0 auto;
+          min-height: 100vh;
+          padding: 0 1rem;
+          display: flex;
+          flex-direction: column;
+          background-color: #f9fafb;
         }
         
         .header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 1rem 2rem;
-          border-bottom: 1px solid #eaeaea;
+          padding: 1.5rem 0;
+          border-bottom: 1px solid #e5e7eb;
         }
         
         .logo {
           font-size: 1.5rem;
           font-weight: bold;
-          color: #0070f3;
+          color: #4f46e5;
         }
         
         .nav-links {
@@ -127,15 +150,14 @@ export default function Home() {
         .nav-button {
           background: none;
           border: none;
-          color: #666;
+          color: #4b5563;
           cursor: pointer;
-          padding: 0.5rem;
-          font-size: 0.9rem;
+          font-size: 1rem;
         }
         
-        .nav-button:hover {
-          color: #0070f3;
-          text-decoration: underline;
+        .auth-buttons {
+          display: flex;
+          align-items: center;
         }
         
         .user-section {
@@ -145,91 +167,141 @@ export default function Home() {
         }
         
         .user-name {
+          color: #4b5563;
           font-size: 0.9rem;
-          color: #666;
         }
         
-        .sign-in-button, .sign-out-button {
+        .sign-out-button, .sign-in-button {
           padding: 0.5rem 1rem;
-          border-radius: 4px;
-          font-size: 0.9rem;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
           cursor: pointer;
-          border: none;
         }
         
         .sign-in-button {
-          background-color: #0070f3;
+          background-color: #4f46e5;
           color: white;
+          border: none;
         }
         
         .sign-out-button {
-          background-color: #f5f5f5;
-          color: #333;
-          border: 1px solid #ddd;
+          background-color: transparent;
+          border: 1px solid #d1d5db;
+          color: #4b5563;
         }
         
         main {
+          flex: 1;
           display: flex;
           flex-direction: column;
-          align-items: center;
-          gap: 2rem;
-          padding: 2rem;
+          max-width: 1200px;
+          margin: 0 auto;
+          width: 100%;
+          padding: 2rem 0;
         }
         
         h1 {
+          margin: 0;
           font-size: 2.5rem;
-          margin-bottom: 0.5rem;
+          font-weight: 800;
+          color: #111827;
+        }
+        
+        p {
+          margin-top: 0.5rem;
+          font-size: 1.25rem;
+          color: #6b7280;
         }
         
         .features {
-          width: 100%;
-          padding: 1.5rem;
-          border-radius: 10px;
-          background-color: #f5f5f5;
+          margin: 2rem 0;
+        }
+        
+        .features h2 {
+          font-size: 1.5rem;
+          color: #111827;
+          margin-bottom: 1rem;
+        }
+        
+        .features ul {
+          padding-left: 1.5rem;
+        }
+        
+        .features li {
+          margin-bottom: 0.5rem;
+          color: #4b5563;
         }
         
         .action-buttons {
           display: flex;
-          gap: 1rem;
-          margin-top: 1rem;
           flex-wrap: wrap;
-          justify-content: center;
+          gap: 1rem;
+          margin: 2rem 0;
         }
         
         .action-button {
-          padding: 0.8rem 1.5rem;
-          border: none;
-          border-radius: 5px;
-          cursor: pointer;
+          padding: 0.75rem 1.5rem;
+          border-radius: 0.5rem;
           font-size: 1rem;
-          transition: background-color 0.3s;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        
+        .action-button.active {
+          transform: scale(0.98);
         }
         
         .voice-button {
-          background-color: #0070f3;
+          background-color: #4f46e5;
           color: white;
+          border: none;
         }
         
         .voice-button:hover {
-          background-color: #0051a2;
+          background-color: #4338ca;
+        }
+        
+        .voice-button.active {
+          background-color: #3730a3;
         }
         
         .workflow-button {
-          background-color: #6200ea;
+          background-color: #7c3aed;
           color: white;
+          border: none;
         }
         
         .workflow-button:hover {
-          background-color: #4b00b5;
+          background-color: #6d28d9;
+        }
+        
+        .workflow-button.active {
+          background-color: #5b21b6;
         }
         
         .history-button {
-          background-color: #00c853;
+          background-color: #10b981;
           color: white;
+          border: none;
         }
         
         .history-button:hover {
-          background-color: #00a846;
+          background-color: #059669;
+        }
+        
+        .lab-button {
+          background-color: #f97316;
+          color: white;
+          border: none;
+        }
+        
+        .lab-button:hover {
+          background-color: #ea580c;
+        }
+        
+        .lab-button.active {
+          background-color: #c2410c;
         }
       `}</style>
     </div>

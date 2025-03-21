@@ -15,7 +15,7 @@ async function handler(req, res) {
   }
 
   try {
-    const { message, conversationId } = req.body;
+    const { message, conversationId, isGuest } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
@@ -27,9 +27,21 @@ async function handler(req, res) {
       return res.status(500).json({ error: 'Server misconfiguration - missing OpenAI API key' });
     }
 
-    // Access the authenticated user
-    const userId = req.user.id;
-    const userName = req.user.name || 'User';
+    // For guest users
+    let userId, userName;
+    
+    if (isGuest) {
+      // Use guest identifiers
+      userId = 'guest-user';
+      userName = 'Guest';
+    } else {
+      // Access the authenticated user
+      if (!req.user) {
+        return res.status(401).json({ error: 'Please sign in to use voice features' });
+      }
+      userId = req.user.id;
+      userName = req.user.name || 'User';
+    }
 
     // Detect intent using simple rules
     const intent = detectIntent(message);
@@ -38,7 +50,17 @@ async function handler(req, res) {
     const systemPrompt = getSystemPromptForIntent(intent, userName);
     const aiResponse = await generateChatCompletion(message, systemPrompt);
 
-    // Handle conversation storage
+    // For guest users, don't store conversation in database
+    if (isGuest) {
+      return res.status(200).json({
+        success: true,
+        response: aiResponse,
+        intent,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Handle conversation storage for authenticated users
     let conversation;
     
     if (conversationId) {
@@ -62,12 +84,10 @@ async function handler(req, res) {
 
     const response = {
       success: true,
-      data: {
-        response: aiResponse,
-        intent,
-        conversationId: updatedConversation._id.toString(),
-        timestamp: new Date().toISOString()
-      }
+      response: aiResponse,
+      intent,
+      conversationId: updatedConversation._id.toString(),
+      timestamp: new Date().toISOString()
     };
 
     return res.status(200).json(response);
@@ -106,5 +126,6 @@ function getSystemPromptForIntent(intent, userName = 'User') {
   }
 }
 
-// Export with authentication middleware
+// Export with authentication middleware, but skip auth check
+// in the handler for guest users
 export default withAuth(handler); 
