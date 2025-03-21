@@ -74,4 +74,44 @@ The project uses n8n for workflow automation to:
 - Add authentication system
 - Implement voice agent memory
 - Integrate with calendar and task management systems
-- Add support for multi-user conversations 
+- Add support for multi-user conversations
+
+## API Key Configuration
+
+To run Everleigh, you need to obtain several API keys and add them to your `.env.local` file:
+
+1. **OpenAI API Key**
+   - Sign up at https://platform.openai.com
+   - Create an API key in the dashboard
+   - Add to `.env.local` as `OPENAI_API_KEY`
+
+2. **LiveKit API Keys**
+   - Sign up at https://livekit.io
+   - Create a new project and get your API key and secret
+   - Add to `.env.local` as:
+     ```
+     NEXT_PUBLIC_LIVEKIT_URL=wss://your-project.livekit.cloud
+     LIVEKIT_API_KEY=your_api_key
+     LIVEKIT_API_SECRET=your_api_secret
+     LIVEKIT_API_URL=https://your-project.livekit.cloud
+     ```
+
+3. **ElevenLabs API Key**
+   - Sign up at https://elevenlabs.io
+   - Get your API key from your profile
+   - Add to `.env.local` as `ELEVENLABS_API_KEY`
+
+4. **Deepgram API Key** (optional for alternative speech-to-text)
+   - Sign up at https://deepgram.com
+   - Create a new project and API key
+   - Add to `.env.local` as `DEEPGRAM_API_KEY`
+
+## Development Server
+
+After configuring your API keys, run the development server:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the application running. 
