@@ -2,14 +2,20 @@
 // In a production environment, this would integrate with n8n and LiveKit
 
 import { generateChatCompletion } from '../../lib/openai';
+import { withAuth } from '../../lib/auth';
+import { 
+  createConversation, 
+  addMessage, 
+  getConversation 
+} from '../../lib/database';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { message } = req.body;
+    const { message, conversationId } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
@@ -21,18 +27,45 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Server misconfiguration - missing OpenAI API key' });
     }
 
+    // Access the authenticated user
+    const userId = req.user.id;
+    const userName = req.user.name || 'User';
+
     // Detect intent using simple rules
     const intent = detectIntent(message);
 
     // Generate response using OpenAI
-    const systemPrompt = getSystemPromptForIntent(intent);
+    const systemPrompt = getSystemPromptForIntent(intent, userName);
     const aiResponse = await generateChatCompletion(message, systemPrompt);
+
+    // Handle conversation storage
+    let conversation;
+    
+    if (conversationId) {
+      // Check if conversation exists and belongs to user
+      conversation = await getConversation(conversationId);
+      
+      if (!conversation || conversation.userId !== userId) {
+        // Create a new conversation if not found or not owned
+        conversation = await createConversation(userId, `Conversation ${new Date().toLocaleString()}`);
+      }
+    } else {
+      // Create a new conversation
+      conversation = await createConversation(userId, `Conversation ${new Date().toLocaleString()}`);
+    }
+    
+    // Add user message
+    await addMessage(conversation._id.toString(), 'user', message);
+    
+    // Add assistant response
+    const updatedConversation = await addMessage(conversation._id.toString(), 'assistant', aiResponse);
 
     const response = {
       success: true,
       data: {
         response: aiResponse,
         intent,
+        conversationId: updatedConversation._id.toString(),
         timestamp: new Date().toISOString()
       }
     };
@@ -58,15 +91,20 @@ function detectIntent(message) {
 }
 
 // Get appropriate system prompt based on detected intent
-function getSystemPromptForIntent(intent) {
+function getSystemPromptForIntent(intent, userName = 'User') {
+  const basePrompt = `You are Everleigh, a helpful voice assistant for ${userName}. `;
+  
   switch (intent) {
     case 'weather':
-      return 'You are Everleigh, a helpful voice assistant. The user is asking about weather. Explain that you do not have real-time weather data yet, but this would be integrated in a production version.';
+      return basePrompt + 'The user is asking about weather. Explain that you do not have real-time weather data yet, but this would be integrated in a production version.';
     case 'time':
-      return 'You are Everleigh, a helpful voice assistant. The user is asking about time or date. Respond with the current time and date based on your knowledge cutoff, explaining that in production this would use the server time.';
+      return basePrompt + 'The user is asking about time or date. Respond with the current time and date based on your knowledge cutoff, explaining that in production this would use the server time.';
     case 'help':
-      return 'You are Everleigh, a helpful voice assistant. The user is asking for help. Provide a brief overview of your capabilities as a voice AI assistant.';
+      return basePrompt + 'The user is asking for help. Provide a brief overview of your capabilities as a voice AI assistant.';
     default:
-      return 'You are Everleigh, a helpful voice assistant. Be concise and friendly in your responses. If you don\'t know something, say so clearly.';
+      return basePrompt + 'Be concise and friendly in your responses. If you don\'t know something, say so clearly.';
   }
-} 
+}
+
+// Export with authentication middleware
+export default withAuth(handler); 
