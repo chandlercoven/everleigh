@@ -3,11 +3,11 @@ module.exports = {
     {
       name: "everleigh",
       script: "npm",
-      args: "run start:prod",
+      args: "run start",
       cwd: "/var/www/html/everleigh",
       env: {
         NODE_ENV: "production",
-        PORT: 3000
+        PORT: 3001
       },
       instances: 1,
       autorestart: true,

@@ -9,6 +9,13 @@ const nextConfig = {
   experimental: {
     appDocumentPreloading: false,
   },
+  // Add these to prevent redirect loops
+  async redirects() {
+    return [];
+  },
+  async rewrites() {
+    return [];
+  }
 }
 
 export default nextConfig 
