@@ -24,6 +24,14 @@ Everleigh Voice AI is now configured for self-hosting with the following compone
   - Configured for real-time audio/video communication
   - Optimized for low-latency voice interactions
 
+### Application Integration
+
+- **Core Components:**
+  - EverleighApp class implemented as central integration point
+  - React context provider for app-wide state management
+  - Production-ready startup script with PM2 process manager
+  - Status monitoring endpoint added
+
 ### Network Configuration
 
 - **Nginx Reverse Proxy:**
