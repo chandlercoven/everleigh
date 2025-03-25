@@ -7,6 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "start:prod": "next start -p ${PORT:-3000}",
     "lint": "next lint",
     "setup:db": "node scripts/setup-mongodb.js",
     "postinstall": "npm run setup:db"
@@ -16,6 +17,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
     "@livekit/agents": "^0.7.1",
     "@livekit/agents-plugin-deepgram": "^0.5.4",
     "@livekit/agents-plugin-elevenlabs": "^0.6.2",
@@ -23,12 +26,17 @@
     "@livekit/agents-plugin-silero": "^0.5.5",
     "@livekit/components-react": "^2.8.1",
     "@livekit/components-styles": "^1.1.4",
+    "@mui/icons-material": "^6.4.8",
+    "@mui/material": "^6.4.8",
     "@next-auth/mongodb-adapter": "^0.0.2-next.298",
+    "@ricky0123/vad-web": "^0.0.22",
     "express-rate-limit": "^7.5.0",
     "formidable": "^3.5.1",
+    "framer-motion": "^12.6.0",
     "jsonwebtoken": "^9.0.2",
     "livekit-client": "^2.9.8",
     "livekit-server-sdk": "^1.2.6",
+    "mixpanel-browser": "^2.61.2",
     "mongodb": "^5.9.2",
     "mongoose": "^8.12.2",
     "n8n": "^1.83.2",
@@ -38,5 +46,10 @@
     "openai": "^4.28.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.0.15"
   }
 }
