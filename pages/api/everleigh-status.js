@@ -1,6 +1,3 @@
-import { apiLimiter } from '../../lib/middleware/rateLimiter';
-import { withOptionalAuth } from '../../lib/middleware/authMiddleware';
-
 /**
  * API endpoint to check Everleigh's integration status
  * This can be used to verify if all components are working correctly
@@ -72,7 +69,5 @@ async function handler(req, res) {
   }
 }
 
-// Apply middleware - use optional auth instead of requiring auth
-const middlewareHandler = apiLimiter.readonly(withOptionalAuth(handler));
-
-export default middlewareHandler; 
+// Export the handler directly without middleware that might be causing issues
+export default handler; 
