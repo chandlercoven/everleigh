@@ -30,4 +30,5 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts 
+next-env.d.ts backups/pre_docker_migration/
+backups/pre_docker_migration/
