@@ -6,13 +6,17 @@ import { createToken } from '../../lib/livekit-server';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
+    console.log(`Method not allowed: ${req.method} for /api/get-livekit-token`);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const { username, room } = req.body;
 
+    console.log(`Token requested for user: ${username || 'undefined'}, room: ${room || 'undefined'}`);
+
     if (!username || !room) {
+      console.error('Missing parameters for token generation');
       return res.status(400).json({ error: 'Username and room are required' });
     }
 
@@ -25,9 +29,10 @@ export default async function handler(req, res) {
     // Generate token using our utility function
     const token = createToken(username, room);
 
+    console.log(`Token successfully generated for user: ${username}`);
     return res.status(200).json({ token });
   } catch (error) {
-    console.error('Error generating token:', error);
-    return res.status(500).json({ error: 'Failed to generate token' });
+    console.error('Error generating token:', error.message, error.stack);
+    return res.status(500).json({ error: 'Failed to generate token', details: process.env.NODE_ENV === 'development' ? error.message : undefined });
   }
 } 
