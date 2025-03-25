@@ -1,0 +1,45 @@
+version: '3.3'
+
+services:
+  # Next.js Application
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile.standalone
+    restart: always
+    ports:
+      - "3002:3001"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://everleighAdmin:EverleighAdmin2685a57376c7f8ab@mongodb:27017/everleigh?authSource=admin
+    volumes:
+      - ./.env.local:/app/.env.local:ro
+    depends_on:
+      - mongodb
+    networks:
+      - everleigh-network
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    restart: always
+    ports:
+      - "27018:27017"  # Using 27018 on host to avoid conflict
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=everleighAdmin
+      - MONGO_INITDB_ROOT_PASSWORD=EverleighAdmin2685a57376c7f8ab
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+    networks:
+      - everleigh-network
+
+volumes:
+  mongodb-data:
+    driver: local
+  mongodb-config:
+    driver: local
+
+networks:
+  everleigh-network:
+    driver: bridge 

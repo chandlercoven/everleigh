@@ -1,0 +1,82 @@
+version: '3.3'
+
+services:
+  # Next.js Application
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://everleighAdmin:EverleighAdmin2685a57376c7f8ab@mongodb:27017/everleigh?authSource=admin
+    volumes:
+      - ./public:/app/public
+      - ./.env.local:/app/.env.local:ro
+    depends_on:
+      - mongodb
+    networks:
+      - everleigh-network
+
+  # n8n Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_HOST=localhost
+      - DB_TYPE=mongodb
+      - DB_MONGODB_CONNECTION_URL=mongodb://everleighAdmin:EverleighAdmin2685a57376c7f8ab@mongodb:27017/n8n?authSource=admin
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=EverleighN8n
+    volumes:
+      - n8n-data:/home/node/.n8n
+    depends_on:
+      - mongodb
+    networks:
+      - everleigh-network
+
+  # LiveKit Server
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: always
+    ports:
+      - "7880:7880"
+      - "7881:7881/udp"
+      - "7882:7882/udp"
+    volumes:
+      - ./livekit.yaml:/livekit.yaml
+    command: --config /livekit.yaml
+    networks:
+      - everleigh-network
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=everleighAdmin
+      - MONGO_INITDB_ROOT_PASSWORD=EverleighAdmin2685a57376c7f8ab
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+    networks:
+      - everleigh-network
+
+networks:
+  everleigh-network:
+    driver: bridge
+
+volumes:
+  n8n-data:
+    driver: local
+  mongodb-data:
+    driver: local
+  mongodb-config:
+    driver: local 

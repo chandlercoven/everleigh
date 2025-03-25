@@ -1,0 +1,16 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3001
+
+# Copy the standalone build and static files
+COPY .next/standalone/ ./
+COPY .next/static/ ./.next/static/
+
+EXPOSE 3001
+
+# Start the Next.js application
+CMD ["node", "server.js"] 
