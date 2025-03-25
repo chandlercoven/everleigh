@@ -4,6 +4,11 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Configure for production API routes
+  output: 'standalone',
+  experimental: {
+    appDocumentPreloading: false,
+  },
 }
 
 export default nextConfig 
