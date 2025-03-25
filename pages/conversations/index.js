@@ -45,12 +45,36 @@ export default function Conversations() {
   const fetchConversationData = async () => {
     try {
       setLoading(true);
+      setError(null); // Clear any previous errors
+      
+      console.log('Attempting to fetch conversations...');
       const conversationsData = await fetchConversations();
-      setConversations(conversationsData);
-      setFilteredConversations(conversationsData);
+      
+      // Check if we got valid data
+      if (!conversationsData || !Array.isArray(conversationsData.conversations)) {
+        console.warn('Invalid conversations data format:', conversationsData);
+        setConversations([]);
+        setFilteredConversations([]);
+        return;
+      }
+      
+      console.log(`Retrieved ${conversationsData.conversations.length} conversations`);
+      setConversations(conversationsData.conversations);
+      setFilteredConversations(conversationsData.conversations);
     } catch (error) {
       console.error('Error fetching conversations:', error);
-      setError(error.message);
+      
+      // Specific handling for authentication errors
+      if (error.message.includes('sign in') || error.message.includes('authentication') || error.message.includes('Unauthorized')) {
+        console.log('Session appears to be invalid, redirecting to login...');
+        // Force refresh the session
+        router.push('/auth/signin?callbackUrl=' + encodeURIComponent(router.asPath));
+        return;
+      }
+      
+      setError(error.message || 'Failed to load conversations');
+      setConversations([]);
+      setFilteredConversations([]);
     } finally {
       setLoading(false);
     }
