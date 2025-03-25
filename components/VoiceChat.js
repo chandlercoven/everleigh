@@ -35,8 +35,18 @@ const VoiceChat = () => {
     // Fetch a LiveKit token for the user
     const getToken = async () => {
       try {
-        // Use the actual user name when authenticated
-        const username = session ? session.user.name || session.user.email : 'guest_' + Math.floor(Math.random() * 10000);
+        // Check if session exists and has user data
+        if (!session || !session.user) {
+          console.warn('No active session or user data found for token generation');
+          // Set a guest username for testing purposes
+          const guestUsername = 'guest_' + Math.floor(Math.random() * 10000);
+          setToken(''); // Clear any existing token
+          return; // Don't proceed with token generation for unauthenticated users
+        }
+        
+        // Use optional chaining to safely access user properties
+        const username = session?.user?.name || session?.user?.email || 'anonymous_' + Math.floor(Math.random() * 10000);
+        console.log(`Attempting to get LiveKit token for user: ${username}`);
         
         const response = await fetch('/api/get-livekit-token', {
           method: 'POST',
@@ -50,14 +60,16 @@ const VoiceChat = () => {
         });
         
         if (!response.ok) {
-          throw new Error('Failed to get token');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`Failed to get token: ${response.status} ${errorData.error || ''}`);
         }
         
         const data = await response.json();
         setToken(data.token);
+        console.log('LiveKit token obtained successfully');
       } catch (error) {
         console.error('Error fetching token:', error);
-        setError('Failed to connect to voice service');
+        setError(`Failed to connect to voice service: ${error.message}`);
       }
     };
 
