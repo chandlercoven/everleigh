@@ -44,17 +44,31 @@ export const authOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id;
+      if (session?.user && token) {
+        session.user.id = token.id || null;
       }
       return session;
     }
   },
   pages: {
     signIn: "/auth/signin",
+    error: '/auth/error',
   },
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-do-not-use-in-production",
   debug: process.env.NODE_ENV === 'development',
+  logger: {
+    error(code, metadata) {
+      console.error(`[Auth] Error: ${code}`, metadata);
+    },
+    warn(code) {
+      console.warn(`[Auth] Warning: ${code}`);
+    },
+    debug(code, metadata) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Auth] Debug: ${code}`, metadata);
+      }
+    }
+  },
 };
 
 // Export the NextAuth handler
