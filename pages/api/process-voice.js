@@ -2,7 +2,7 @@
 // In a production environment, this would integrate with n8n and LiveKit
 
 import { generateChatCompletion } from '../../lib/openai';
-import { withAuth } from '../../lib/auth';
+import { withAuth } from '../../lib/modern-auth';
 import { 
   createConversation, 
   addMessage, 

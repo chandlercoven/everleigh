@@ -1,9 +1,9 @@
 /**
  * Cache management API endpoint for administrators
  */
-import { withAuth } from '../../../lib/auth';
+import { withAuth } from '../../../lib/modern-auth';
 import { apiLimiter } from '../../../lib/middleware/rateLimiter';
-import redisClient, { flush, del } from '../../../lib/cache';
+import redisClient, { flush, del } from '../../../lib/redis-cache';
 
 // Apply the API rate limiter
 export const config = {

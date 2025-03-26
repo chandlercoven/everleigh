@@ -1,4 +1,4 @@
-import { withAuth } from '../../../lib/auth';
+import { withAuth } from '../../../lib/modern-auth';
 import { getUserConversations, createConversation } from '../../../lib/database';
 import { cacheMiddleware } from '../../../lib/middleware/cacheMiddleware';
 import { apiLimiter } from '../../../lib/middleware/rateLimiter';

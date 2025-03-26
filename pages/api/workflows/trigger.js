@@ -2,7 +2,7 @@
  * API endpoint to trigger n8n workflows
  */
 
-import { withAuth } from '../../../lib/auth';
+import { withAuth } from '../../../lib/modern-auth';
 import { apiLimiter } from '../../../lib/middleware/rateLimiter';
 
 // Apply rate limiter to this sensitive endpoint

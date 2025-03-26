@@ -1,4 +1,4 @@
-import { withAuth } from '../../../lib/auth';
+import { withAuth } from '../../../lib/modern-auth';
 import { 
   getConversation, 
   addMessage,
@@ -7,7 +7,7 @@ import {
 } from '../../../lib/database';
 import { cacheMiddleware } from '../../../lib/middleware/cacheMiddleware';
 import { apiLimiter } from '../../../lib/middleware/rateLimiter';
-import { del } from '../../../lib/cache';
+import { del } from '../../../lib/redis-cache';
 
 async function handler(req, res) {
   const conversationId = req.query.id;

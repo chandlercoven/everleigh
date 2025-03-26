@@ -1,4 +1,4 @@
-import { set, get } from '../../lib/cache';
+import { set, get } from '../../lib/redis-cache';
 
 export default async function handler(req, res) {
   // Set a value in Redis cache

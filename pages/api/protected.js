@@ -1,4 +1,4 @@
-import { withAuth } from '../../lib/middleware/authMiddleware';
+import { withAuth } from '../../lib/modern-auth';
 
 /**
  * Protected endpoint that requires authentication

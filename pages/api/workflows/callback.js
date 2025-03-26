@@ -3,7 +3,7 @@
  * This endpoint receives results from n8n workflow executions
  */
 
-import { withAuth } from '../../../lib/auth';
+import { withAuth } from '../../../lib/modern-auth';
 import dbConnect from '../../../lib/mongoose';
 import Conversation from '../../../lib/models/conversation';
 
