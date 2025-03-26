@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import {
@@ -6,30 +6,47 @@ import {
   VideoConference,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
-import { 
-  processVoiceMessage, 
-  triggerWorkflow,
-  getAvailableWorkflowTypes 
-} from '../lib/api';
+import { useVoiceChatStore } from '../lib/store';
+import { getSmartDate } from '../lib/date-utils';
 
-const VoiceChat = () => {
+const ModernVoiceChat = () => {
   const router = useRouter();
   const { data: session } = useSession();
-  const [token, setToken] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [message, setMessage] = useState('');
-  const [response, setResponse] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState('');
-  const [conversationId, setConversationId] = useState(null);
-  const [showWorkflowPanel, setShowWorkflowPanel] = useState(false);
-  const [selectedWorkflow, setSelectedWorkflow] = useState('');
-  const [workflowData, setWorkflowData] = useState('');
-  const [isWorkflowTriggering, setIsWorkflowTriggering] = useState(false);
-  const [workflowStatus, setWorkflowStatus] = useState(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
-  const workflowTypes = getAvailableWorkflowTypes();
+  
+  // Use the Zustand store for state management
+  const {
+    isRecording,
+    isProcessing,
+    message,
+    response,
+    error,
+    conversationId,
+    showWorkflowPanel,
+    selectedWorkflow,
+    workflowData,
+    isWorkflowTriggering,
+    workflowStatus,
+    setIsRecording,
+    setIsProcessing,
+    setMessage,
+    setResponse,
+    setError,
+    setConversationId,
+    resetState,
+    clearError,
+    toggleWorkflowPanel,
+    setSelectedWorkflow,
+    setWorkflowData,
+    triggerWorkflow,
+    processMessage
+  } = useVoiceChatStore();
+  
+  const [token, setToken] = useState('');
+  
+  // Available workflow types
+  const workflowTypes = ['weather', 'calendar', 'reminder', 'email'];
 
   useEffect(() => {
     // Fetch a LiveKit token for the user
@@ -38,8 +55,6 @@ const VoiceChat = () => {
         // Check if session exists and has user data
         if (!session || !session.user) {
           console.warn('No active session or user data found for token generation');
-          // Set a guest username for testing purposes
-          const guestUsername = 'guest_' + Math.floor(Math.random() * 10000);
           setToken(''); // Clear any existing token
           return; // Don't proceed with token generation for unauthenticated users
         }
@@ -79,7 +94,7 @@ const VoiceChat = () => {
     if (router.query.conversationId) {
       setConversationId(router.query.conversationId);
     }
-  }, [session, router.query.conversationId]);
+  }, [session, router.query.conversationId, setConversationId, setError]);
 
   // Start voice recording
   const startRecording = async () => {
@@ -134,18 +149,13 @@ const VoiceChat = () => {
 
       const transcribeData = await transcribeResponse.json();
       const transcribedText = transcribeData.data.transcription;
-      setMessage(transcribedText);
-
-      // Process the transcribed text using our API utility
+      
+      // Process the transcribed text using our Zustand action
       try {
-        const processData = await processVoiceMessage(transcribedText, conversationId);
-        setResponse(processData.response);
+        const processData = await processMessage(transcribedText);
         
-        // Store conversation ID if provided
+        // Update URL with conversation ID without reloading page
         if (processData.conversationId) {
-          setConversationId(processData.conversationId);
-          
-          // Update URL with conversation ID without reloading page
           router.push(
             {
               pathname: router.pathname,
@@ -183,11 +193,10 @@ const VoiceChat = () => {
           throw error;
         }
       }
-
-      setIsProcessing(false);
     } catch (error) {
       console.error('Error processing audio:', error);
       setError('Error processing your message');
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -201,383 +210,216 @@ const VoiceChat = () => {
     }
   };
 
-  // Toggle workflow panel
-  const toggleWorkflowPanel = () => {
-    setShowWorkflowPanel(!showWorkflowPanel);
-    if (!showWorkflowPanel) {
-      setSelectedWorkflow('');
-      setWorkflowData('');
-      setWorkflowStatus(null);
-    }
-  };
-
-  // Handle workflow selection
-  const handleWorkflowChange = (e) => {
-    setSelectedWorkflow(e.target.value);
-    setWorkflowStatus(null);
-  };
-
   // Handle workflow data input
   const handleWorkflowDataChange = (e) => {
     setWorkflowData(e.target.value);
   };
 
-  // Trigger selected workflow
-  const handleTriggerWorkflow = async () => {
-    if (!selectedWorkflow || !conversationId) {
-      return;
-    }
-
-    setIsWorkflowTriggering(true);
-    setWorkflowStatus(null);
-
-    try {
-      let parsedData = {};
-      if (workflowData.trim()) {
-        try {
-          parsedData = JSON.parse(workflowData);
-        } catch (e) {
-          // If not valid JSON, use as string
-          parsedData = { text: workflowData };
-        }
-      }
-
-      const result = await triggerWorkflow(selectedWorkflow, conversationId, parsedData);
-      
-      setWorkflowStatus({
-        success: true,
-        message: result.message,
-        taskId: result.taskId
-      });
-    } catch (error) {
-      console.error('Error triggering workflow:', error);
-      setWorkflowStatus({
-        success: false,
-        message: error.message
-      });
-    } finally {
-      setIsWorkflowTriggering(false);
-    }
-  };
-
-  // Display authentication message if not signed in
-  if (!session) {
-    return (
-      <div className="auth-message">
-        <h3>Authentication Required</h3>
-        <p>Please sign in to use the voice chat feature.</p>
-        <button 
-          onClick={() => window.location.href = '/auth/signin'}
-          className="sign-in-button"
-        >
-          Sign In
-        </button>
-        <style jsx>{`
-          .auth-message {
-            text-align: center;
-            padding: 2rem;
-          }
-          .sign-in-button {
-            padding: 0.75rem 1.5rem;
-            background-color: #0070f3;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-weight: 500;
-            cursor: pointer;
-            margin-top: 1rem;
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  if (error) {
-    return <div className="error-message">{error}</div>;
-  }
-
-  if (!token) {
-    return <div>Connecting to voice service...</div>;
-  }
-
   return (
-    <div className="voice-chat-container">
-      <h2>Everleigh Voice Assistant</h2>
-      <p>Hello, {session.user.name || session.user.email}</p>
-      
-      <div className="voice-controls">
-        <button 
-          onClick={isRecording ? stopRecording : startRecording}
-          className={isRecording ? 'recording' : ''}
-          disabled={isProcessing}
-        >
-          {isRecording ? 'Stop Recording' : 'Start Recording'}
-        </button>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 p-4">
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold mb-2">Everleigh Voice Assistant</h1>
+          <p className="text-gray-600">
+            Talk to your AI assistant using your microphone.
+          </p>
+        </div>
         
-        {isProcessing && <div className="processing-indicator">Processing...</div>}
-        
-        {conversationId && (
-          <>
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 relative">
+            <span className="block sm:inline">{error}</span>
             <button 
-              onClick={viewConversationHistory}
-              className="history-button"
-              disabled={isProcessing || isRecording}
+              className="absolute top-0 right-0 px-4 py-3" 
+              onClick={clearError}
             >
-              View Conversation
-            </button>
-            
-            <button 
-              onClick={toggleWorkflowPanel}
-              className={`workflow-button ${showWorkflowPanel ? 'active' : ''}`}
-              disabled={isProcessing || isRecording}
-            >
-              {showWorkflowPanel ? 'Hide Workflows' : 'Run Workflow'}
-            </button>
-          </>
-        )}
-      </div>
-      
-      {showWorkflowPanel && conversationId && (
-        <div className="workflow-panel">
-          <h3>Run n8n Workflow</h3>
-          
-          <div className="workflow-form">
-            <div className="form-group">
-              <label htmlFor="workflow-type">Select Workflow:</label>
-              <select 
-                id="workflow-type" 
-                value={selectedWorkflow} 
-                onChange={handleWorkflowChange}
-                disabled={isWorkflowTriggering}
-              >
-                <option value="">-- Select a workflow --</option>
-                {workflowTypes.map(type => (
-                  <option key={type} value={type}>
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="workflow-data">Workflow Data (optional JSON):</label>
-              <textarea 
-                id="workflow-data" 
-                value={workflowData} 
-                onChange={handleWorkflowDataChange}
-                placeholder='{"key": "value"}'
-                disabled={isWorkflowTriggering}
-                rows={4}
-              />
-            </div>
-            
-            <button 
-              onClick={handleTriggerWorkflow}
-              disabled={!selectedWorkflow || isWorkflowTriggering}
-              className="trigger-button"
-            >
-              {isWorkflowTriggering ? 'Triggering...' : 'Trigger Workflow'}
+              <span className="sr-only">Dismiss</span>
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 8.586l3.293-3.293a1 1 0 111.414 1.414L11.414 10l3.293 3.293a1 1 0 11-1.414 1.414L10 11.414l-3.293 3.293a1 1 0 01-1.414-1.414L8.586 10 5.293 6.707a1 1 0 011.414-1.414L10 8.586z" clipRule="evenodd" />
+              </svg>
             </button>
           </div>
+        )}
+        
+        <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold mb-2 sm:mb-0">Voice Chat</h2>
+            <div className="flex space-x-2">
+              <button
+                onClick={viewConversationHistory}
+                className="btn btn-secondary"
+                disabled={!conversationId}
+              >
+                View History
+              </button>
+              <button
+                onClick={toggleWorkflowPanel}
+                className="btn btn-primary"
+              >
+                {showWorkflowPanel ? 'Hide Workflows' : 'Show Workflows'}
+              </button>
+            </div>
+          </div>
           
-          {workflowStatus && (
-            <div className={`workflow-status ${workflowStatus.success ? 'success' : 'error'}`}>
-              <p>{workflowStatus.message}</p>
-              {workflowStatus.taskId && (
-                <p className="task-id">Task ID: {workflowStatus.taskId}</p>
-              )}
+          {/* Recording controls */}
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="mb-6 relative w-24 h-24">
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isProcessing}
+                className={`w-full h-full rounded-full focus:outline-none transition-colors ${
+                  isRecording 
+                    ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                    : 'bg-blue-500 hover:bg-blue-600'
+                } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <span className="sr-only">
+                  {isRecording ? 'Stop Recording' : 'Start Recording'}
+                </span>
+                <svg
+                  className="w-12 h-12 mx-auto text-white"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  {isRecording ? (
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z"
+                      clipRule="evenodd"
+                    />
+                  ) : (
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm-2-5a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"
+                      clipRule="evenodd"
+                    />
+                  )}
+                </svg>
+              </button>
+            </div>
+            <p className="text-gray-600 mb-2">
+              {isRecording
+                ? 'Recording... Click to stop'
+                : isProcessing
+                ? 'Processing...'
+                : 'Click to start recording'}
+            </p>
+          </div>
+          
+          {/* Conversation display */}
+          {(message || response) && (
+            <div className="border rounded-lg overflow-hidden mt-6">
+              <div className="bg-gray-50 p-4 border-b">
+                <h3 className="font-medium">Conversation</h3>
+                {conversationId && (
+                  <p className="text-xs text-gray-500">ID: {conversationId}</p>
+                )}
+              </div>
+              <div className="p-4 space-y-4">
+                {message && (
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-1">You</p>
+                    <p>{message}</p>
+                  </div>
+                )}
+                {response && (
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-1">Assistant</p>
+                    <p>{response}</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
-      )}
-      
-      {message && (
-        <div className="message">
-          <strong>You said:</strong>
-          <p>{message}</p>
-        </div>
-      )}
-      
-      {response && (
-        <div className="response">
-          <strong>Everleigh:</strong>
-          <p>{response}</p>
-        </div>
-      )}
-      
-      <div className="livekit-container">
-        <LiveKitRoom
-          serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
-          token={token}
-          connectOptions={{ autoSubscribe: true }}
-        >
-          <VideoConference />
-        </LiveKitRoom>
+        
+        {/* Workflow panel */}
+        {showWorkflowPanel && (
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-xl font-semibold mb-4">Workflows</h2>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="workflow" className="block text-sm font-medium mb-1">
+                  Select Workflow
+                </label>
+                <select
+                  id="workflow"
+                  value={selectedWorkflow}
+                  onChange={(e) => setSelectedWorkflow(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md"
+                >
+                  <option value="">-- Select a workflow --</option>
+                  {workflowTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label htmlFor="workflowData" className="block text-sm font-medium mb-1">
+                  Workflow Data (JSON or text)
+                </label>
+                <textarea
+                  id="workflowData"
+                  value={workflowData}
+                  onChange={handleWorkflowDataChange}
+                  rows={4}
+                  className="w-full px-3 py-2 border rounded-md"
+                  placeholder='{"key": "value"} or plain text'
+                />
+              </div>
+              
+              <button
+                onClick={triggerWorkflow}
+                disabled={!selectedWorkflow || !conversationId || isWorkflowTriggering}
+                className={`btn btn-primary w-full ${
+                  !selectedWorkflow || !conversationId || isWorkflowTriggering
+                    ? 'opacity-50 cursor-not-allowed'
+                    : ''
+                }`}
+              >
+                {isWorkflowTriggering ? 'Triggering...' : 'Trigger Workflow'}
+              </button>
+              
+              {workflowStatus && (
+                <div
+                  className={`mt-4 p-3 rounded-lg ${
+                    workflowStatus.success
+                      ? 'bg-green-50 text-green-800'
+                      : 'bg-red-50 text-red-800'
+                  }`}
+                >
+                  <p className="font-medium">
+                    {workflowStatus.success ? 'Success' : 'Error'}
+                  </p>
+                  <p>{workflowStatus.message}</p>
+                  {workflowStatus.taskId && (
+                    <p className="text-sm mt-1">Task ID: {workflowStatus.taskId}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       
-      <style jsx>{`
-        .voice-chat-container {
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 20px;
-        }
-        
-        .voice-controls {
-          margin: 20px 0;
-          display: flex;
-          align-items: center;
-          gap: 15px;
-        }
-        
-        button {
-          padding: 12px 24px;
-          background-color: #4a90e2;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 16px;
-          transition: background-color 0.3s;
-        }
-        
-        button:hover {
-          background-color: #3a7bc8;
-        }
-        
-        button.recording {
-          background-color: #e24a4a;
-          animation: pulse 1.5s infinite;
-        }
-        
-        button:disabled {
-          background-color: #cccccc;
-          cursor: not-allowed;
-        }
-        
-        .history-button {
-          background-color: #00c853;
-        }
-        
-        .history-button:hover {
-          background-color: #00a846;
-        }
-        
-        .workflow-button {
-          background-color: #9c27b0;
-        }
-        
-        .workflow-button:hover {
-          background-color: #7b1fa2;
-        }
-        
-        .workflow-button.active {
-          background-color: #6a1b9a;
-        }
-        
-        .workflow-panel {
-          background-color: #f5f5f5;
-          border-radius: 8px;
-          padding: 20px;
-          margin-bottom: 20px;
-        }
-        
-        .workflow-form {
-          display: flex;
-          flex-direction: column;
-          gap: 15px;
-        }
-        
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-        }
-        
-        .form-group label {
-          font-weight: 500;
-          color: #333;
-        }
-        
-        select, textarea {
-          padding: 10px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 14px;
-        }
-        
-        .trigger-button {
-          align-self: flex-start;
-          background-color: #ff5722;
-        }
-        
-        .trigger-button:hover {
-          background-color: #e64a19;
-        }
-        
-        .workflow-status {
-          margin-top: 15px;
-          padding: 10px;
-          border-radius: 4px;
-        }
-        
-        .workflow-status.success {
-          background-color: #e8f5e9;
-          color: #2e7d32;
-        }
-        
-        .workflow-status.error {
-          background-color: #ffebee;
-          color: #c62828;
-        }
-        
-        .task-id {
-          font-size: 12px;
-          margin-top: 5px;
-          color: #666;
-        }
-        
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.7; }
-          100% { opacity: 1; }
-        }
-        
-        .processing-indicator {
-          margin-left: 15px;
-          color: #666;
-        }
-        
-        .message, .response {
-          margin: 15px 0;
-          padding: 15px;
-          border-radius: 8px;
-        }
-        
-        .message {
-          background-color: #f0f4f8;
-        }
-        
-        .response {
-          background-color: #e8f5e9;
-        }
-        
-        .error-message {
-          color: #d32f2f;
-          background-color: #ffebee;
-          padding: 15px;
-          border-radius: 4px;
-          margin: 20px 0;
-        }
-        
-        .livekit-container {
-          margin-top: 30px;
-          height: 400px;
-          border-radius: 8px;
-          overflow: hidden;
-        }
-      `}</style>
+      {/* LiveKit room */}
+      {token && (
+        <div className="hidden">
+          <LiveKitRoom
+            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+            token={token}
+            connect={true}
+            connectOptions={{ autoSubscribe: true }}
+          >
+            <VideoConference />
+          </LiveKitRoom>
+        </div>
+      )}
     </div>
   );
 };
 
-export default VoiceChat; 
+export default ModernVoiceChat; 

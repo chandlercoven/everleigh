@@ -3,7 +3,7 @@
  */
 import { withAuth } from '../../../lib/auth';
 import { apiLimiter } from '../../../lib/middleware/rateLimiter';
-import cache, { flush, getStats } from '../../../lib/cache';
+import redisClient, { flush, del } from '../../../lib/cache';
 
 // Apply the API rate limiter
 export const config = {
@@ -24,17 +24,24 @@ async function handler(req, res) {
 
   // GET request to retrieve cache statistics
   if (req.method === 'GET') {
-    const stats = getStats();
-    const keys = cache.keys();
-    
-    return res.status(200).json({
-      success: true,
-      data: {
-        stats,
-        keyCount: keys.length,
-        keys: keys.slice(0, 100), // Only return the first 100 keys to avoid overwhelming response
-      }
-    });
+    try {
+      const keys = await redisClient.keys('*');
+      const info = await redisClient.info();
+      
+      return res.status(200).json({
+        success: true,
+        data: {
+          info,
+          keyCount: keys.length,
+          keys: keys.slice(0, 100), // Only return the first 100 keys to avoid overwhelming response
+        }
+      });
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to get Redis statistics'
+      });
+    }
   }
   
   // POST request to clear the cache
@@ -42,7 +49,7 @@ async function handler(req, res) {
     const { action } = req.body;
     
     if (action === 'flush') {
-      flush();
+      await flush();
       
       return res.status(200).json({
         success: true,
@@ -51,7 +58,7 @@ async function handler(req, res) {
     }
     
     if (action === 'delete' && req.body.key) {
-      const deleted = cache.del(req.body.key);
+      const deleted = await del(req.body.key);
       
       return res.status(200).json({
         success: true,
