@@ -1,4 +1,4 @@
-import { api } from '../../lib/api';
+import { createApiHandler } from '../../lib/api';
 
 /**
  * Protected endpoint that requires authentication
@@ -15,7 +15,7 @@ const handler = async (req, res) => {
 };
 
 // Use the new API handler creator with authentication required
-export default api.createHandler({
+export default createApiHandler({
   methods: ['GET'],
   requireAuth: true,
   handler,
