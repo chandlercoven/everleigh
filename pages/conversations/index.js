@@ -2,28 +2,23 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import Head from 'next/head';
-import { fetchConversations, deleteConversation } from '../../lib/api';
+import { useConversations, deleteConversation } from '../../lib/swr-api';
 
 export default function Conversations() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [conversations, setConversations] = useState([]);
   const [filteredConversations, setFilteredConversations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Use SWR hook for data fetching
+  const { data, error, isLoading } = useConversations();
+  const conversations = data?.conversations || [];
 
   useEffect(() => {
     // Redirect to login if not authenticated
     if (status === 'unauthenticated') {
       router.push('/auth/signin');
-      return;
-    }
-
-    // Fetch conversations if authenticated
-    if (status === 'authenticated') {
-      fetchConversationData();
     }
   }, [status, router]);
 
@@ -42,44 +37,6 @@ export default function Conversations() {
     }
   }, [searchTerm, conversations]);
 
-  const fetchConversationData = async () => {
-    try {
-      setLoading(true);
-      setError(null); // Clear any previous errors
-      
-      console.log('Attempting to fetch conversations...');
-      const conversationsData = await fetchConversations();
-      
-      // Check if we got valid data
-      if (!conversationsData || !Array.isArray(conversationsData.conversations)) {
-        console.warn('Invalid conversations data format:', conversationsData);
-        setConversations([]);
-        setFilteredConversations([]);
-        return;
-      }
-      
-      console.log(`Retrieved ${conversationsData.conversations.length} conversations`);
-      setConversations(conversationsData.conversations);
-      setFilteredConversations(conversationsData.conversations);
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-      
-      // Specific handling for authentication errors
-      if (error.message.includes('sign in') || error.message.includes('authentication') || error.message.includes('Unauthorized')) {
-        console.log('Session appears to be invalid, redirecting to login...');
-        // Force refresh the session
-        router.push('/auth/signin?callbackUrl=' + encodeURIComponent(router.asPath));
-        return;
-      }
-      
-      setError(error.message || 'Failed to load conversations');
-      setConversations([]);
-      setFilteredConversations([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleConversationClick = (id) => {
     router.push(`/conversations/${id}`);
   };
@@ -96,11 +53,9 @@ export default function Conversations() {
     try {
       setIsDeleting(true);
       await deleteConversation(id);
-      // Remove the deleted conversation from state
-      setConversations(prev => prev.filter(conv => conv._id !== id));
-    } catch (error) {
-      console.error('Error deleting conversation:', error);
-      setError('Failed to delete conversation');
+      // The SWR cache will be updated automatically
+    } catch (err) {
+      console.error('Error deleting conversation:', err);
     } finally {
       setIsDeleting(false);
     }
@@ -115,7 +70,7 @@ export default function Conversations() {
     return date.toLocaleString();
   };
 
-  if (status === 'loading' || loading) {
+  if (status === 'loading' || isLoading) {
     return <div className="loading">Loading conversations...</div>;
   }
 
