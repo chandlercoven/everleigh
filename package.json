@@ -9,7 +9,16 @@
     "start": "next start",
     "start:standalone": "node .next/standalone/server.js",
     "lint": "next lint",
-    "setup:db": "node scripts/setup-mongodb.js"
+    "setup:db": "node scripts/setup-mongodb.js",
+    "build:production": "NODE_ENV=production next build",
+    "analyze": "ANALYZE=true next build",
+    "clean": "rimraf .next out",
+    "deploy": "bash deploy.sh",
+    "deploy:api": "bash deploy.sh api",
+    "deploy:ui": "bash deploy.sh ui",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "cache:clear": "node scripts/clear-cache.js"
   },
   "keywords": [],
   "author": "",
@@ -58,5 +67,11 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@next/bundle-analyzer": "^15.1.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^15.1.0",
+    "jest": "^29.5.0"
   }
 }
