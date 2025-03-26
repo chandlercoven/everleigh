@@ -194,7 +194,10 @@ const ModernVoiceChat = ({ isVisible, onToggle }) => {
       }
     };
 
-    getToken();
+    // Only call getToken if session exists
+    if (session) {
+      getToken();
+    }
     
     // Get conversation ID from URL if provided
     if (router.query.conversationId) {

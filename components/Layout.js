@@ -194,20 +194,20 @@ export default function Layout({ children }) {
             </button>
           </div>
           {/* Mobile session info */}
-          {session && (
+          {session && session.user && (
             <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-600">
               <div className="flex items-center px-4">
-                {session.user.image && (
+                {session.user?.image && (
                   <div className="flex-shrink-0">
                     <img className="h-10 w-10 rounded-full" src={session.user.image} alt="" />
                   </div>
                 )}
                 <div className="ml-3">
                   <div className="text-base font-medium text-gray-800 dark:text-white">
-                    {session.user.name || 'User'}
+                    {session.user?.name || 'User'}
                   </div>
                   <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {session.user.email}
+                    {session.user?.email}
                   </div>
                 </div>
               </div>
