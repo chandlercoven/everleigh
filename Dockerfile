@@ -30,10 +30,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy environment variables if they exist
-COPY --from=builder /app/.env.local ./ || true
-COPY --from=builder /app/.env.production ./ || true
-COPY --from=builder /app/.env ./ || true
+# Create empty environment files (will be mounted at runtime)
+RUN touch .env.local .env.production .env
 
 # Create a non-root user
 RUN addgroup --system --gid 1001 nodejs && \
