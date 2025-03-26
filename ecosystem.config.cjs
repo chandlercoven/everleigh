@@ -7,7 +7,8 @@ module.exports = {
       cwd: "/var/www/html/everleigh",
       env: {
         NODE_ENV: "production",
-        PORT: 3001
+        PORT: 3005,
+        HOST: "127.0.0.1"
       },
       instances: 1,
       autorestart: true,
