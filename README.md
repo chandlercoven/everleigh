@@ -2,6 +2,10 @@
 
 A voice AI project built with LiveKit for real-time voice interactions, MongoDB for data persistence, and n8n for workflow automation.
 
+## Deployment
+
+For instructions on deploying the application, please refer to [DEPLOYMENT.md](DEPLOYMENT.md). This document provides the standard process for deploying after making changes.
+
 ## Tech Stack
 
 - **Next.js** - React framework for the web interface
@@ -100,6 +104,20 @@ The project uses n8n for workflow automation to:
 2. Integrate with external services (weather, calendar, email, reminders)
 3. Handle multi-step agent interactions
 4. Process and store conversation data
+
+## Recent Updates
+
+### Dependency Modernization (June 2024)
+
+The project dependencies have been modernized to ensure compatibility with Node.js 18+ and prepare for Node.js 20:
+
+- Replaced deprecated packages with modern alternatives:
+  - Added `sharp` as a modern replacement for image processing
+  - Updated to `@infisical/sdk` for secret management 
+  - Upgraded to `rimraf` v5 and added `fast-glob` for better file operations
+  - Added `google-auth-library` for modern authentication
+
+For detailed information about these changes, see [DEPENDENCY_MODERNIZATION.md](DEPENDENCY_MODERNIZATION.md).
 
 ## Security Features
 

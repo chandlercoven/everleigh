@@ -96,10 +96,23 @@ function backup_mongodb {
 
 # Function to rebuild the Next.js container
 function rebuild_nextjs {
-    echo "Rebuilding Next.js container..."
+    echo "=========================================="
+    echo "Rebuilding Next.js container with changes"
+    echo "=========================================="
+    echo "This is the standard way to deploy after making frontend changes."
+    echo "The process will:"
+    echo " 1. Rebuild the Next.js container with your changes"
+    echo " 2. Restart the container with the new build"
+    echo "Starting rebuild process..."
+    
     docker-compose build nextjs
+    
+    echo "Build complete. Restarting container..."
     docker-compose up -d nextjs
-    echo "Next.js container rebuilt and started."
+    
+    echo "✅ Deployment complete!"
+    echo "To check logs: ./deploy.sh logs nextjs"
+    echo "To verify status: ./deploy.sh status"
 }
 
 # Parse command line arguments

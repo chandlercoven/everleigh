@@ -106,6 +106,40 @@
   }
 }
 
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animate-pulse {
+    animation: none !important;
+  }
+  
+  .animate-bounce {
+    animation: none !important;
+  }
+  
+  .scale-110 {
+    transform: scale(1) !important;
+  }
+}
+
+/* Specifically for users with JS enabled who have reduced-motion class applied */
+body.reduced-motion *,
+body.reduced-motion ::before,
+body.reduced-motion ::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background-color: #1F2937;

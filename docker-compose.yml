@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.3'
 
 services:
   # Next.js Application
@@ -8,18 +8,17 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "3002:3001"
     environment:
       - NODE_ENV=production
       - MONGODB_URI=mongodb://everleighAdmin:EverleighAdmin2685a57376c7f8ab@mongodb:27017/everleigh?authSource=admin
-      - NEXTAUTH_URL=http://localhost:3001
+      - NEXTAUTH_URL=http://localhost:3002
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-default-secret-change-in-production}
     volumes:
       - ./public:/app/public
       - ./.env.local:/app/.env.local:ro
     depends_on:
-      mongodb:
-        condition: service_healthy
+      - mongodb
     networks:
       - everleigh-network
     logging:
@@ -32,7 +31,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 40s
 
   # n8n Workflow Automation
   n8n:
@@ -53,8 +51,7 @@ services:
     volumes:
       - n8n-data:/home/node/.n8n
     depends_on:
-      mongodb:
-        condition: service_healthy
+      - mongodb
     networks:
       - everleigh-network
     logging:
@@ -67,7 +64,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 40s
 
   # LiveKit Server
   livekit:
@@ -110,7 +106,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
     command: ["--bind_ip_all", "--auth"]
 
 networks:
