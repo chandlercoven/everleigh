@@ -1,4 +1,4 @@
-import { createApiHandler } from '../../lib/api';
+import { createApiHandler } from '../../lib/api/handlers';
 
 /**
  * Protected endpoint that requires authentication
