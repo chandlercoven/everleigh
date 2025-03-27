@@ -9,7 +9,10 @@ module.exports = {
         NODE_ENV: "production",
         PORT: 3005,
         HOST: "127.0.0.1",
-        LOG_LEVEL: "DEBUG"
+        LOG_LEVEL: "DEBUG",
+        REDIS_URL: "redis://redis:6379",
+        DISABLE_REDIS: false,
+        NODE_OPTIONS: "--trace-warnings --unhandled-rejections=strict"
       },
       instances: 1,
       autorestart: true,
