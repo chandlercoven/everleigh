@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { usePreferencesStore } from '../lib/store';
 import ModernVoiceChat from './VoiceChat';
@@ -117,31 +117,43 @@ export default function Layout({ children }) {
             </div>
             
             <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
-              {/* Session status */}
+              {/* User info display */}
               {session && (
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {session.user.name || session.user.email}
+                  {session.user?.name || session.user?.email || 'User'}
                 </span>
               )}
               
-              {/* Voice Assistant Button */}
+              {/* Sign out button */}
               <button
-                onClick={toggleVoicePanel}
+                onClick={async () => {
+                  await signOut({ callbackUrl: '/' });
+                }}
                 className="h-10 px-4 rounded-md shadow
-                        bg-gradient-to-r from-indigo-600 to-indigo-500 
-                        hover:from-indigo-700 hover:to-indigo-600
-                        flex items-center justify-center
-                        focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
-                        transition-all duration-300"
-                aria-label="Toggle voice assistant"
-                aria-expanded={isVoicePanelVisible}
+                  bg-red-600 hover:bg-red-700 text-white
+                  flex items-center justify-center"
               >
-                <svg className="w-5 h-5 text-white mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-                <span className="text-white text-sm font-medium">Voice</span>
+                Sign out
               </button>
             </div>
+            
+            {/* Voice Assistant Button */}
+            <button
+              onClick={toggleVoicePanel}
+              className="h-10 px-4 rounded-md shadow
+                      bg-gradient-to-r from-indigo-600 to-indigo-500 
+                      hover:from-indigo-700 hover:to-indigo-600
+                      flex items-center justify-center
+                      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                      transition-all duration-300"
+              aria-label="Toggle voice assistant"
+              aria-expanded={isVoicePanelVisible}
+            >
+              <svg className="w-5 h-5 text-white mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+              <span className="text-white text-sm font-medium">Voice</span>
+            </button>
             
             {/* Mobile menu button */}
             <div className="flex items-center sm:hidden">
@@ -193,10 +205,11 @@ export default function Layout({ children }) {
               Voice Assistant
             </button>
           </div>
-          {/* Mobile session info */}
+          {/* Mobile user menu */}
           {session && session.user && (
             <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-600">
               <div className="flex items-center px-4">
+                {/* User avatar */}
                 {session.user?.image && (
                   <div className="flex-shrink-0">
                     <img className="h-10 w-10 rounded-full" src={session.user.image} alt="" />
@@ -207,9 +220,19 @@ export default function Layout({ children }) {
                     {session.user?.name || 'User'}
                   </div>
                   <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {session.user?.email}
+                    {session.user?.email || ''}
                   </div>
                 </div>
+              </div>
+              
+              {/* Mobile sign out */}
+              <div className="mt-3 space-y-1">
+                <button
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                  className="w-full text-left px-4 py-2 text-base font-medium text-gray-500 dark:text-gray-300 hover:text-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Sign out
+                </button>
               </div>
             </div>
           )}
