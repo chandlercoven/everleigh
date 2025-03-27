@@ -9,177 +9,230 @@ import {
   getConversation 
 } from '../../lib/database';
 
+// Enhanced custom error handling
+class APIError extends Error {
+  constructor(message, status = 500, code = 'internal_error', details = null) {
+    super(message);
+    this.status = status;
+    this.code = code;
+    this.details = details;
+    this.name = 'APIError';
+  }
+}
+
 async function handler(req, res) {
-  // Log request method and parameters for debugging
-  console.log(`[${new Date().toISOString()}] Voice processing request:`, { 
+  // Enable detailed debug logging
+  const enableDebug = process.env.DEBUG_API === 'true';
+  
+  // Helper for consistent debug logging
+  const logInfo = (message, data = {}) => {
+    if (enableDebug) {
+      console.log(`[${new Date().toISOString()}] [Voice API] ${message}`, data);
+    }
+  };
+  
+  // Log request details
+  logInfo('Voice processing request received', { 
     method: req.method,
     path: req.url,
     body: req.body ? { 
       conversationId: req.body.conversationId,
       isGuest: req.body.isGuest,
       messageLength: req.body.message?.length
-    } : null
+    } : null,
+    headers: {
+      'content-type': req.headers['content-type'],
+      'user-agent': req.headers['user-agent']?.substring(0, 50)
+    }
   });
 
+  // Method validation with detailed response
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed', allowedMethods: ['POST'] });
+    return res.status(405).json({ 
+      error: {
+        message: 'Method not allowed', 
+        code: 'method_not_allowed',
+        allowedMethods: ['POST']
+      },
+      status: 'error',
+      timestamp: new Date().toISOString()
+    });
   }
 
   try {
+    // Extract and validate the request data
     const { message, conversationId, isGuest } = req.body;
 
-    if (!message) {
-      console.warn('[Voice API] Missing message parameter');
-      return res.status(400).json({ error: 'Message is required' });
+    // Input validation with detailed errors
+    if (!message || typeof message !== 'string') {
+      throw new APIError(
+        'Message is required and must be a string', 
+        400, 
+        'invalid_input', 
+        { field: 'message' }
+      );
     }
 
-    // Check for OpenAI API key
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('[Voice API] OpenAI API key not configured');
-      return res.status(500).json({ error: 'Server misconfiguration - missing OpenAI API key' });
+    if (message.length > 10000) {
+      throw new APIError(
+        'Message is too long (max 10000 characters)', 
+        400, 
+        'input_too_large', 
+        { field: 'message', maxLength: 10000, actualLength: message.length }
+      );
     }
 
-    // For guest users
-    let userId, userName;
-    
-    if (isGuest) {
-      // Use guest identifiers
-      userId = 'guest-user';
-      userName = 'Guest';
-      console.log('[Voice API] Processing request for guest user');
-    } else {
-      // Access the authenticated user
-      if (!req?.user) {
-        console.warn('[Voice API] Authentication required but user not found in request');
-        return res.status(401).json({ error: 'Please sign in to use voice features' });
-      }
-      userId = req.user?.id || 'unknown-user';
-      userName = req.user?.name || 'User';
-      console.log(`[Voice API] Processing request for authenticated user: ${userId}`);
+    // Determine user context (authenticated or guest)
+    const userId = req.user?.id || (isGuest ? 'guest' : null);
+    if (!userId) {
+      throw new APIError(
+        'Authentication required to process voice messages', 
+        401, 
+        'authentication_required'
+      );
     }
 
-    // Detect intent using simple rules
-    const intent = detectIntent(message);
-    console.log(`[Voice API] Detected intent: ${intent} for message of length ${message.length}`);
+    // Log the processing attempt
+    logInfo('Processing user message', { 
+      userId, 
+      messageLength: message.length,
+      isGuest: !!isGuest,
+      hasConversationId: !!conversationId
+    });
 
-    // Generate response using OpenAI
-    const systemPrompt = getSystemPromptForIntent(intent, userName);
-    console.log('[Voice API] Sending request to OpenAI');
-    const aiResponse = await generateChatCompletion(message, systemPrompt);
-    console.log('[Voice API] Received response from OpenAI');
+    // Determine intent (simplified for demo)
+    const intent = message.toLowerCase().includes('weather') 
+      ? 'weather_query' 
+      : message.toLowerCase().includes('remind') 
+        ? 'reminder_creation'
+        : 'general_conversation';
 
-    // For guest users, don't store conversation in database
-    if (isGuest) {
-      console.log('[Voice API] Returning response for guest user (no conversation storage)');
-      return res.status(200).json({
-        success: true,
-        response: aiResponse,
-        intent,
-        timestamp: new Date().toISOString()
-      });
+    logInfo('Detected intent', { intent });
+
+    // Generate a response using OpenAI
+    logInfo('Sending message to AI for processing');
+    let aiResponse;
+    try {
+      aiResponse = await generateChatCompletion([
+        { role: 'system', content: 'You are a helpful voice assistant named Everleigh.' },
+        { role: 'user', content: message }
+      ]);
+      logInfo('Received AI response', { responseLength: aiResponse.length });
+    } catch (aiError) {
+      logInfo('AI processing error', { error: aiError.message });
+      throw new APIError(
+        'Failed to generate AI response', 
+        503, 
+        'ai_service_error', 
+        { serviceError: aiError.message }
+      );
     }
 
-    // Handle conversation storage for authenticated users
+    // Handle conversation storage
     let conversation;
     
     try {
       if (conversationId) {
-        console.log(`[Voice API] Fetching existing conversation: ${conversationId}`);
+        logInfo('Fetching existing conversation', { conversationId });
         // Check if conversation exists and belongs to user
         conversation = await getConversation(conversationId);
         
         if (!conversation || conversation.userId !== userId) {
-          console.log(`[Voice API] Conversation not found or not owned by user, creating new conversation`);
+          logInfo('Conversation not found or not owned by user, creating new conversation', {
+            found: !!conversation,
+            ownedByUser: conversation ? conversation.userId === userId : false
+          });
           // Create a new conversation if not found or not owned
           conversation = await createConversation(userId, `Conversation ${new Date().toLocaleString()}`);
         }
       } else {
-        console.log(`[Voice API] Creating new conversation for user: ${userId}`);
+        logInfo('Creating new conversation', { userId });
         // Create a new conversation
         conversation = await createConversation(userId, `Conversation ${new Date().toLocaleString()}`);
       }
       
-      console.log(`[Voice API] Adding user message to conversation: ${conversation._id.toString()}`);
+      logInfo('Adding user message to conversation', { 
+        conversationId: conversation._id.toString(),
+        messageLength: message.length
+      });
+      
       // Add user message
       await addMessage(conversation._id.toString(), 'user', message);
       
-      console.log(`[Voice API] Adding assistant response to conversation: ${conversation._id.toString()}`);
+      logInfo('Adding assistant response to conversation', { 
+        conversationId: conversation._id.toString(),
+        responseLength: aiResponse.length
+      });
+      
       // Add assistant response
       const updatedConversation = await addMessage(conversation._id.toString(), 'assistant', aiResponse);
 
+      // Generate the successful response with rich metadata
       const response = {
         success: true,
+        status: 'success',
         response: aiResponse,
         intent,
-        conversationId: updatedConversation._id.toString(),
-        timestamp: new Date().toISOString()
+        conversation: {
+          id: updatedConversation._id.toString(),
+          messageCount: updatedConversation.messages.length,
+          created: updatedConversation.createdAt
+        },
+        timestamp: new Date().toISOString(),
+        processingTime: Date.now() - (req.startTime || Date.now())
       };
 
-      console.log('[Voice API] Successfully processed and stored conversation');
+      logInfo('Successfully processed voice request', { 
+        conversationId: updatedConversation._id.toString(),
+        responseLength: aiResponse.length
+      });
+      
       return res.status(200).json(response);
     } catch (dbError) {
-      console.error('[Voice API] Database error:', dbError);
-      console.error('[Voice API] Database error stack:', dbError.stack);
+      logInfo('Database operation error', { error: dbError.message });
       
-      // Still return the AI response even if database operations fail
-      return res.status(200).json({
+      // Even if storage fails, return the AI response to the user
+      // but include info about the storage failure
+      const response = {
         success: true,
+        status: 'partial_success',
         response: aiResponse,
         intent,
-        error: 'Failed to store conversation, but response was generated',
+        error: {
+          message: 'Your message was processed but could not be saved',
+          code: 'storage_error',
+          details: dbError.message
+        },
         timestamp: new Date().toISOString()
-      });
+      };
+      
+      return res.status(207).json(response);
     }
   } catch (error) {
-    console.error('Error processing voice message:', error);
-    console.error('Stack trace:', error.stack);
-    console.error('Request data:', {
-      method: req.method,
-      url: req.url,
-      headers: req.headers,
-      body: req.body ? { 
-        conversationId: req.body.conversationId,
-        isGuest: req.body.isGuest,
-        messageLength: req.body.message?.length
-      } : null
-    });
+    // Enhanced error handling with detailed response
+    console.error('Error in voice processing:', error);
     
-    return res.status(500).json({ 
-      error: 'Failed to process voice message',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    // Determine the proper error status and code
+    const status = error instanceof APIError ? error.status : 500;
+    const errorCode = error instanceof APIError ? error.code : 'internal_server_error';
+    const details = error instanceof APIError ? error.details : null;
+    
+    return res.status(status).json({
+      success: false,
+      status: 'error',
+      error: {
+        message: error.message || 'An unexpected error occurred',
+        code: errorCode,
+        details: details,
+        trace: enableDebug ? error.stack : undefined
+      },
+      timestamp: new Date().toISOString()
     });
   }
 }
 
-// Intent detection with basic rules
-function detectIntent(message) {
-  const msg = message.toLowerCase();
-  if (msg.includes('weather')) {
-    return 'weather';
-  } else if (msg.includes('time') || msg.includes('date')) {
-    return 'time';
-  } else if (msg.includes('help')) {
-    return 'help';
-  }
-  return 'general';
-}
-
-// Get appropriate system prompt based on detected intent
-function getSystemPromptForIntent(intent, userName = 'User') {
-  const basePrompt = `You are Everleigh, a helpful voice assistant for ${userName}. `;
-  
-  switch (intent) {
-    case 'weather':
-      return basePrompt + 'The user is asking about weather. Explain that you do not have real-time weather data yet, but this would be integrated in a production version.';
-    case 'time':
-      return basePrompt + 'The user is asking about time or date. Respond with the current time and date based on your knowledge cutoff, explaining that in production this would use the server time.';
-    case 'help':
-      return basePrompt + 'The user is asking for help. Provide a brief overview of your capabilities as a voice AI assistant.';
-    default:
-      return basePrompt + 'Be concise and friendly in your responses. If you don\'t know something, say so clearly.';
-  }
-}
-
-// Export with authentication middleware, but skip auth check
-// in the handler for guest users
-export default withAuth(handler); 
+// Export with auth wrapper
+export default withAuth(handler, { 
+  allowGuest: true,
+  requireAuth: false 
+}); 
