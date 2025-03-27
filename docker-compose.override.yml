@@ -1,0 +1,37 @@
+version: '3.3'
+
+services:
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DISABLE_REDIS=true
+      - MONGODB_URI=mongodb://mongodb:27017/everleigh
+      - N8N_SERVER_URL=http://n8n:5678
+    depends_on:
+      - redis
+      - mongodb
+      - n8n
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    hostname: redis
+    expose:
+      - 6379
+    volumes:
+      - redis-data:/data
+
+  mongodb:
+    image: mongo:6.0
+    restart: always
+    hostname: mongodb
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  redis-data:
+  mongo-data: 
