@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import VoiceChat from '../components/VoiceChat';
+import VoiceChat from '../components/VoiceChat/index';
 import VoiceLabChat from '../components/VoiceLabChat';
 import AgentWorkflow from '../components/AgentWorkflow';
 import { voiceAgentInfo } from '../lib/voiceAgent';

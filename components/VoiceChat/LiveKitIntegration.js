@@ -4,28 +4,87 @@ import { LiveKitRoom, VideoConference } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { useVoiceChatStore } from '../../lib/store';
 
+// Safely access nested properties with fallback
+const safeGet = (obj, path, fallback = null) => {
+  try {
+    return path.split('.').reduce((acc, part) => 
+      acc && acc[part] !== undefined && acc[part] !== null ? acc[part] : null, obj) || fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+
 const LiveKitIntegration = ({ session }) => {
   const [token, setToken] = useState('');
+  const [isError, setIsError] = useState(false);
   
   const {
     setError,
   } = useVoiceChatStore();
 
+  // Reset component state when session changes
+  useEffect(() => {
+    // Clear state when component unmounts or session changes
+    return () => {
+      setToken('');
+      setIsError(false);
+    };
+  }, [session]);
+
   // Get LiveKit token
   useEffect(() => {
+    // Don't try if we already know there's an error
+    if (isError) return;
+    
+    // Skip if no session
+    if (!session) {
+      console.warn('No session available for LiveKit integration');
+      return;
+    }
+    
+    // Memory efficient - use a local variable to track component mounting state
+    let isMounted = true;
+    
     // Fetch a LiveKit token for the user
     const getToken = async () => {
       try {
-        // Check if session exists and has user data
-        if (!session || !session.user) {
-          console.warn('No active session or user data found for token generation');
-          setToken(''); // Clear any existing token
-          return; // Don't proceed with token generation for unauthenticated users
+        // Double-check session is still valid
+        if (!session || !isMounted) return;
+        
+        // Extra safety checks for user data
+        const user = safeGet(session, 'user');
+        if (!user) {
+          console.warn('Session has no user data for token generation');
+          if (isMounted) {
+            setToken('');
+          }
+          return;
         }
         
-        // Use optional chaining to safely access user properties
-        const username = session?.user?.name || session?.user?.email || 'anonymous_' + Math.floor(Math.random() * 10000);
-        console.log(`Attempting to get LiveKit token for user: ${username}`);
+        // Generate a username with multiple safeguards
+        // Use unique random ID to prevent collisions
+        const timestamp = Date.now();
+        const randomId = Math.floor(Math.random() * 100000);
+        
+        // Get user identifiers with safe access
+        const name = safeGet(user, 'name', '');
+        const email = safeGet(user, 'email', '');
+        const id = safeGet(user, 'id', '') || safeGet(user, 'sub', '');
+        
+        // Create username with fallbacks
+        const username = 
+          (name && typeof name === 'string' ? name : '') || 
+          (email && typeof email === 'string' ? email : '') || 
+          (id && typeof id === 'string' ? id : '') ||
+          `anonymous_${randomId}_${timestamp}`;
+        
+        // Clean username to remove any special characters
+        const cleanUsername = username.replace(/[^\w\s]/gi, '').substring(0, 32);
+        
+        console.log(`Attempting to get LiveKit token for user: ${cleanUsername}`);
+        
+        // Don't continue if component unmounted during async operation
+        if (!isMounted) return;
         
         const response = await fetch('/api/get-livekit-token', {
           method: 'POST',
@@ -33,10 +92,13 @@ const LiveKitIntegration = ({ session }) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            username,
+            username: cleanUsername,
             room: 'everleigh-voice-room',
           }),
         });
+        
+        // Don't continue if component unmounted during async operation
+        if (!isMounted) return;
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -44,28 +106,43 @@ const LiveKitIntegration = ({ session }) => {
         }
         
         const data = await response.json();
-        setToken(data.token);
-        console.log('LiveKit token obtained successfully');
+        
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setToken(data.token);
+          console.log('LiveKit token obtained successfully');
+        }
       } catch (error) {
         console.error('Error fetching token:', error);
-        setError(`Failed to connect to voice service: ${error.message}`);
+        
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setIsError(true);
+          setError(`Failed to connect to voice service: ${error.message}`);
+        }
       }
     };
 
+    // Start token fetching
     getToken();
-  }, [session, setError]);
+    
+    // Cleanup function to prevent memory leaks and race conditions
+    return () => {
+      isMounted = false;
+    };
+  }, [session, setError, isError]);
 
-  // If no token, don't render the LiveKit room
-  if (!token) {
+  // Don't render anything if there's no token or an error occurred
+  if (!token || isError) {
     return null;
   }
 
+  // Memory-optimized rendering
   return (
     <div className="livekit-container">
       <LiveKitRoom
         token={token}
         serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
-        // Use custom options for a more streamlined experience
         options={{
           publishDefaults: {
             simulcast: true,

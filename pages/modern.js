@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import VoiceChat from '../components/VoiceChat';
+import VoiceChat from '../components/VoiceChat/index';
 import ModernConversationList from '../components/ModernConversationList';
 import { usePreferencesStore } from '../lib/store';
 import Layout from '../components/Layout';
