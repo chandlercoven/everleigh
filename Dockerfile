@@ -25,7 +25,7 @@ ENV NODE_ENV=production
 ENV PORT=3001
 
 # Copy necessary files from build stage
-COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/next.config.mjs ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
@@ -42,9 +42,9 @@ USER nextjs
 
 EXPOSE 3001
 
-# Add healthcheck
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:3001/api/ping || exit 1
+# Add healthcheck with better status checks
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3001/api/ping -H "Accept: application/json" | grep -q '"status":"healthy"' || exit 1
 
 # Start the Next.js application
 CMD ["node", "server.js"] 
