@@ -3,8 +3,27 @@ import { SessionProvider } from 'next-auth/react';
 import { PreferencesProvider } from '../lib/store';
 import Script from 'next/script';
 import ErrorBoundary from '../components/ErrorBoundary';
+import { useEffect } from 'react';
 
 function MyApp({ Component, pageProps: { session, ...pageProps } }) {
+  // Add debug CSS to make sure all styles are applied
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Force CSS refresh
+      const links = document.querySelectorAll('link[rel="stylesheet"]');
+      links.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href) {
+          const url = new URL(href, window.location.origin);
+          url.searchParams.set('t', Date.now());
+          link.setAttribute('href', url.toString());
+        }
+      });
+
+      console.log('Stylesheets refreshed:', links.length);
+    }
+  }, []);
+
   return (
     <>
       <Script

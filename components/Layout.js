@@ -75,11 +75,12 @@ export default function Layout({ children }) {
     };
   }, [router]);
 
-  // Navigation links
-  const navLinks = [
-    { name: 'Home', href: '/', current: router.pathname === '/' },
-    { name: 'Conversations', href: '/conversations', current: router.pathname.startsWith('/conversations') },
-    { name: 'Modern UI', href: '/modern', current: router.pathname === '/modern' },
+  // Define navigation links for the app
+  const getNavigationLinks = (pathname) => [
+    { name: 'Home', href: '/', current: pathname === '/' },
+    { name: 'Conversations', href: '/conversations', current: pathname.startsWith('/conversations') },
+    { name: 'Voice Assistant', href: '/modern', current: pathname === '/modern' },
+    { name: 'Chat', href: '/conversation', current: pathname === '/conversation' },
   ];
   
   return (
@@ -99,7 +100,7 @@ export default function Layout({ children }) {
               </div>
               {/* Desktop navigation */}
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                {navLinks.map((link) => (
+                {getNavigationLinks(router.pathname).map((link) => (
                   <a
                     key={link.name}
                     href={link.href}
@@ -182,7 +183,7 @@ export default function Layout({ children }) {
         {/* Mobile menu */}
         <div className={`${isMobileMenuOpen ? 'block' : 'hidden'} sm:hidden`} id="mobile-menu">
           <div className="pt-2 pb-3 space-y-1">
-            {navLinks.map((link) => (
+            {getNavigationLinks(router.pathname).map((link) => (
               <a
                 key={link.name}
                 href={link.href}

@@ -46,6 +46,13 @@ export default function Home() {
               {showLabChat ? 'Hide Lab Interface' : 'Show Lab Interface'}
             </button>
 
+            <button 
+              onClick={() => router.push('/conversation')}
+              className="px-4 py-2 rounded-md font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Try New Conversational UI
+            </button>
+
             {session && (
               <>
                 <button 

@@ -104,6 +104,54 @@
   .dark .card {
     background-color: #1F2937;
   }
+
+  /* New UI Component Styles */
+  .message-container {
+    display: flex;
+    width: 100%;
+  }
+  
+  .animate-in {
+    animation: slideIn 0.3s ease-out;
+  }
+  
+  .visualizer-container .visualizer-bars {
+    transform-origin: center bottom;
+  }
+  
+  .visualizer-container .visualizer-bars .wave-bar {
+    transform-origin: center bottom;
+    transition: height 0.1s ease-in-out;
+  }
+
+  /* Conversation UI */
+  .conversational-ui {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .conversation-container::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .conversation-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .conversation-container::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border-radius: 20px;
+    border: 2px solid transparent;
+  }
+  
+  .dark .conversation-container::-webkit-scrollbar-thumb {
+    background-color: rgba(75, 85, 99, 0.5);
+  }
+  
+  .typing-indicator div {
+    animation-duration: 1.25s;
+  }
 }
 
 /* Reduced motion support */
