@@ -9,6 +9,7 @@ const nextConfig = {
   // Configure for production API routes
   output: 'standalone',
   experimental: {
+    // Disable document preloading as recommended
     appDocumentPreloading: false,
   },
   // Add these to prevent redirect loops
@@ -20,26 +21,27 @@ const nextConfig = {
   }
 }
 
+// Configure Sentry source maps and error reporting
 const sentryWebpackPluginOptions = {
-  // For all available options, see:
-  // https://www.npmjs.com/package/@sentry/webpack-plugin#options
   org: "bundle-coverage-llc",
   project: "javascript-nextjs",
-
-  // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
   widenClientFileUpload: true,
-
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
   tunnelRoute: "/monitoring/sentry",
-
-  // Automatically tree-shake Sentry logger statements to reduce bundle size
   disableLogger: true,
-
-  // Enables automatic instrumentation of Vercel Cron Monitors
   automaticVercelMonitors: true,
 };
 
-export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);
+// Configure Sentry SDK initialization
+const sentryOptions = {
+  // Important: We'll use the new instrumentation hook system
+  // Disable any automatic SDK initialization from the plugin
+  autoInstrumentServerFunctions: false,
+  autoInstrumentClient: false,
+  autoInstrumentMiddleware: false,
+  
+  // Use only instrumentation files for initialization
+  enableInstrumentationHook: true
+};
+
+export default withSentryConfig(nextConfig, sentryWebpackPluginOptions, sentryOptions);
