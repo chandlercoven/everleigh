@@ -2,14 +2,21 @@ import React, { useEffect, useState, useRef } from 'react';
 import { usePreferencesStore } from '../../lib/store';
 
 /**
- * VoiceVisualizer - Advanced voice visualization component
- * Provides visual feedback for voice input and output
+ * VoiceVisualizer - Displays audio levels and recording status visually
+ * 
+ * @param {Object} props
+ * @param {boolean} props.isActive - Whether the visualizer is active
+ * @param {number} props.audioLevel - Audio level between 0 and 1
+ * @param {string} props.status - Current status (idle, requesting_permission, recording, processing, error)
+ * @param {string} props.theme - UI theme (light/dark)
+ * @param {string} props.size - Size of the visualizer (sm, md, lg)
  */
 const VoiceVisualizer = ({ 
   isActive = false, 
-  mode = 'listening', // 'listening', 'speaking', 'processing', 'idle'
   audioLevel = 0,
-  size = 'md' // 'sm', 'md', 'lg'
+  status = 'idle',
+  theme = 'light',
+  size = 'md' 
 }) => {
   const [bars, setBars] = useState([]);
   const [isVisible, setIsVisible] = useState(false);
@@ -17,26 +24,11 @@ const VoiceVisualizer = ({
   const frameRef = useRef(null);
   const visualizerRef = useRef(null);
   
-  // Determine size classes
-  const sizeMap = {
-    sm: {
-      container: 'w-16 h-16',
-      bars: 'w-1',
-      count: 10
-    },
-    md: {
-      container: 'w-24 h-24',
-      bars: 'w-1.5',
-      count: 14
-    },
-    lg: {
-      container: 'w-32 h-32',
-      bars: 'w-2',
-      count: 20
-    }
-  };
-  
-  const sizeClass = sizeMap[size] || sizeMap.md;
+  // Determine bar count and visualizer size
+  const barCount = size === 'sm' ? 3 : size === 'lg' ? 7 : 5;
+  const visualizerSize = size === 'sm' ? 'h-12 w-12' : size === 'lg' ? 'h-24 w-24' : 'h-16 w-16';
+  const barWidth = size === 'sm' ? 'w-1' : size === 'lg' ? 'w-2' : 'w-1.5';
+  const gapSize = size === 'sm' ? 'gap-1' : size === 'lg' ? 'gap-2' : 'gap-1.5';
   
   // Setup animation timing
   useEffect(() => {
@@ -47,140 +39,112 @@ const VoiceVisualizer = ({
     return () => clearTimeout(timer);
   }, []);
   
-  // Generate bars based on mode and audio level
-  useEffect(() => {
-    if (!isActive && mode === 'idle') {
-      setBars(Array(sizeClass.count).fill(1)); // Minimal height when inactive
-      return;
+  // Generate bars with heights based on activity and audio level
+  const generateBars = () => {
+    if (!isActive) {
+      // Inactive state - flat bars
+      return Array(barCount).fill().map((_, i) => (
+        <div 
+          key={i}
+          className={`${barWidth} h-1 bg-gray-300 dark:bg-gray-700 rounded-full transition-all duration-150`}
+        />
+      ));
     }
     
-    if (mode === 'processing') {
-      // For processing, generate a "loading" style animation
-      const processingBars = Array(sizeClass.count).fill().map((_, i) => ({
-        height: 10 + Math.sin((Date.now() / 500) + (i * 0.5)) * 8,
-        delay: i * 50
-      }));
-      setBars(processingBars);
+    // For active state, create varying heights based on audio level
+    return Array(barCount).fill().map((_, i) => {
+      // Create a custom height for each bar
+      // Center bars are taller than outer bars when audio level is high
+      const position = i - Math.floor(barCount / 2);
+      const positionFactor = 1 - Math.min(1, Math.abs(position) / (barCount / 2)) * 0.5;
       
-      // Continuously update for animation
-      frameRef.current = requestAnimationFrame(() => {
-        if (mode === 'processing') {
-          setBars(processingBars);
-        }
-      });
+      // Add some randomness for a more natural look
+      const randomFactor = 0.8 + Math.random() * 0.4;
       
-      return () => {
-        if (frameRef.current) {
-          cancelAnimationFrame(frameRef.current);
-        }
-      };
-    }
-    
-    // Generate random heights for static visualization
-    const generateBars = () => {
-      const baseLevels = {
-        listening: () => {
-          // Use audioLevel (0-1) to determine intensity
-          // Add some randomness for natural look
-          const level = audioLevel * 40;
-          return Array(sizeClass.count).fill().map(() => 
-            5 + Math.random() * level
-          );
-        },
-        speaking: () => {
-          // More pronounced, symmetric pattern for speaking
-          return Array(sizeClass.count).fill().map((_, i) => {
-            const centerDistance = Math.abs((sizeClass.count - 1) / 2 - i);
-            const centerFactor = 1 - (centerDistance / ((sizeClass.count - 1) / 2));
-            return 10 + (centerFactor * 30) + (Math.random() * 10 - 5);
-          });
-        },
-        idle: () => Array(sizeClass.count).fill(3)
-      };
+      // Calculate height (in pixels)
+      const heightScale = size === 'sm' ? 24 : size === 'lg' ? 48 : 32;
+      const height = Math.max(4, Math.round(audioLevel * positionFactor * randomFactor * heightScale));
       
-      return baseLevels[mode] ? baseLevels[mode]() : Array(sizeClass.count).fill(1);
-    };
-    
-    // For active modes, continuously update
-    if ((mode === 'listening' || mode === 'speaking') && isActive) {
-      frameRef.current = requestAnimationFrame(() => {
-        setBars(generateBars());
-      });
-    } else {
-      setBars(generateBars());
-    }
-    
-    return () => {
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current);
-      }
-    };
-  }, [isActive, mode, audioLevel, sizeClass.count]);
-  
-  // Colors based on mode
-  const getColorClass = () => {
-    const modeColors = {
-      listening: 'from-rose-500 to-amber-500',
-      speaking: 'from-indigo-500 to-emerald-500',
-      processing: 'from-gray-400 to-gray-600 dark:from-gray-600 dark:to-gray-800',
-      idle: 'from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800'
-    };
-    
-    return modeColors[mode] || modeColors.idle;
+      return (
+        <div 
+          key={i}
+          className={`${barWidth} bg-blue-500 dark:bg-blue-400 rounded-full transition-all duration-75`}
+          style={{ height: `${height}px` }}
+        />
+      );
+    });
   };
   
-  const containerClasses = `
-    visualizer-container
-    ${sizeClass.container}
-    relative
-    rounded-full
-    overflow-hidden
-    flex
-    items-center
-    justify-center
-    border
-    border-gray-200
-    dark:border-gray-700
-    bg-gray-50
-    dark:bg-gray-900
-    p-3
-    transition-opacity
-    duration-300
-    ${isVisible ? 'opacity-100' : 'opacity-0'}
-  `;
+  // Determine icon and status text
+  const getStatusInfo = () => {
+    switch(status) {
+      case 'requesting_permission':
+        return {
+          icon: '🎤',
+          text: 'Requesting microphone access...',
+          color: 'text-yellow-500 dark:text-yellow-400'
+        };
+      case 'recording':
+        return {
+          icon: '🔴',
+          text: 'Recording...',
+          color: 'text-red-500 dark:text-red-400'
+        };
+      case 'processing':
+        return {
+          icon: '⏳',
+          text: 'Processing...',
+          color: 'text-blue-500 dark:text-blue-400'
+        };
+      case 'error':
+        return {
+          icon: '⚠️',
+          text: 'Error',
+          color: 'text-red-500 dark:text-red-400'
+        };
+      default:
+        return {
+          icon: '🎙️',
+          text: 'Ready',
+          color: 'text-gray-500 dark:text-gray-400'
+        };
+    }
+  };
+  
+  const { icon, text, color } = getStatusInfo();
   
   return (
-    <div className={containerClasses}>
-      <div 
-        ref={visualizerRef}
-        className="visualizer-bars flex items-end justify-center h-full w-full gap-px"
-      >
-        {bars.map((height, index) => (
-          <div
-            key={index}
-            className={`${sizeClass.bars} h-full relative overflow-hidden rounded-t-sm`}
-          >
-            <div
-              className={`absolute bottom-0 w-full bg-gradient-to-t ${getColorClass()} transition-all duration-75`}
-              style={{ 
-                height: `${typeof height === 'object' ? height.height : height}%`,
-                transitionDelay: typeof height === 'object' ? `${height.delay}ms` : '0ms'
-              }}
-            ></div>
-          </div>
-        ))}
-      </div>
+    <div className="voice-visualizer flex flex-col items-center">
+      {/* Status indicator above the visualizer */}
+      {status !== 'idle' && (
+        <div className={`mb-2 text-sm ${color} font-medium flex items-center`}>
+          <span className="mr-1">{icon}</span>
+          <span>{text}</span>
+        </div>
+      )}
       
-      {/* Status indicator */}
-      <div className="absolute bottom-1 right-1 h-2 w-2 rounded-full bg-white flex items-center justify-center">
+      {/* Main visualizer */}
+      <div className={`relative ${visualizerSize} flex items-center justify-center`}>
+        {/* Circular background */}
         <div 
-          className={`h-1.5 w-1.5 rounded-full ${
-            mode === 'listening' ? 'bg-rose-500 animate-pulse' :
-            mode === 'speaking' ? 'bg-indigo-500 animate-pulse' :
-            mode === 'processing' ? 'bg-amber-500 animate-pulse' :
-            'bg-gray-400'
-          }`}
-        ></div>
+          className={`
+            absolute inset-0 rounded-full 
+            ${isActive 
+              ? 'bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800' 
+              : 'bg-gray-100 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700'}
+            transition-colors duration-300
+          `}
+        />
+        
+        {/* Bars container */}
+        <div className={`relative flex items-center ${gapSize} h-1/2`}>
+          {generateBars()}
+        </div>
+        
+        {/* Pulse animation for requesting or processing states */}
+        {(status === 'requesting_permission' || status === 'processing') && (
+          <div className="absolute inset-0 rounded-full border-2 border-current animate-ping opacity-75"></div>
+        )}
       </div>
     </div>
   );
