@@ -12,8 +12,12 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // Log the error to console or error tracking service
+    // Log the error to console
     console.error('Error caught by ErrorBoundary:', error, errorInfo);
+    // Send error to Sentry if available
+    if (typeof window !== 'undefined' && window.Sentry) {
+      window.Sentry.captureException(error, { extra: errorInfo });
+    }
   }
 
   render() {

@@ -8,7 +8,8 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 3005,
-        HOST: "127.0.0.1"
+        HOST: "127.0.0.1",
+        LOG_LEVEL: "DEBUG"
       },
       instances: 1,
       autorestart: true,
@@ -22,7 +23,16 @@ module.exports = {
       wait_ready: true,
       listen_timeout: 10000,
       kill_timeout: 5000,
-      exec_mode: "fork"
+      exec_mode: "fork",
+      log_type: "json",
+      log_rotate: true,
+      max_logs: "10",
+      log_file: "/var/log/pm2/everleigh-combined.log",
+      time: true,
+      error_tracking: true,
+      monitor: true,
+      max_memory_restart: "500M",
+      max_cpu_usage: 80
     }
   ]
 };
