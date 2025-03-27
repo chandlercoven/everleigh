@@ -3,6 +3,8 @@ module.exports = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
+    "./components/ui/**/*.{js,ts,jsx,tsx}",
+    "./hooks/**/*.{js,ts,jsx,tsx}",
     "./styles/**/*.css",
   ],
   theme: {
@@ -56,6 +58,57 @@ module.exports = {
           800: '#991B1B',
           900: '#7F1D1D',
         },
+      },
+      animation: {
+        'in': 'fadeIn 0.3s ease-out',
+        'out': 'fadeOut 0.2s ease-in forwards',
+        'slide-in': 'slideIn 0.3s ease-out',
+        'slide-out': 'slideOut 0.2s ease-in forwards',
+        'bounce-in': 'bounceIn 0.5s ease-out',
+        'pulse-subtle': 'pulseSubtle 3s infinite',
+        'wave': 'wave 1.5s infinite',
+        'typing': 'typing 1.5s infinite'
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        fadeOut: {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
+        slideIn: {
+          '0%': { transform: 'translateY(20px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        slideOut: {
+          '0%': { transform: 'translateY(0)', opacity: '1' },
+          '100%': { transform: 'translateY(-20px)', opacity: '0' },
+        },
+        bounceIn: {
+          '0%': { transform: 'scale(0.8)', opacity: '0' },
+          '70%': { transform: 'scale(1.05)', opacity: '1' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        pulseSubtle: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.7' },
+        },
+        wave: {
+          '0%': { transform: 'scaleY(0.2)' },
+          '50%': { transform: 'scaleY(1)' },
+          '100%': { transform: 'scaleY(0.2)' },
+        },
+        typing: {
+          '0%': { opacity: '0.2' },
+          '50%': { opacity: '1' },
+          '100%': { opacity: '0.2' },
+        }
+      },
+      transitionProperty: {
+        'height': 'height',
+        'spacing': 'margin, padding',
       },
     },
   },
