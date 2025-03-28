@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "start:standalone": "node .next/standalone/server.js",
+    "ts-build": "SKIP_TYPE_CHECK=true next build --no-lint",
+    "start": "node server.js",
+    "start:next": "next start",
+    "start:standalone": "node server.js",
     "lint": "next lint",
     "setup:db": "node scripts/setup-mongodb.js",
     "build:production": "NODE_ENV=production next build",

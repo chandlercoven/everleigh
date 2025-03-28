@@ -171,7 +171,15 @@ const LiveKitIntegration: React.FC<LiveKitIntegrationProps> = ({ session }) => {
         options={{
           publishDefaults: {
             simulcast: true,
-            videoSimulcastLayers: [{ width: 320, height: 240, encoding: { maxBitrate: 150_000, maxFramerate: 15 } }],
+            videoSimulcastLayers: [{ 
+              width: 320, 
+              height: 240, 
+              resolution: 'qvga',
+              encoding: { 
+                maxBitrate: 150_000, 
+                maxFramerate: 15 
+              } 
+            }],
           },
           adaptiveStream: true,
           dynacast: true,

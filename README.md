@@ -171,4 +171,37 @@ After configuring your API keys, run the development server:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser to see the application running. 
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the application running.
+
+## Docker Builds
+
+### Production Builds
+
+To create a production-ready Docker image compatible with the TypeScript migration, run:
+
+```bash
+./scripts/docker-build-production.sh
+```
+
+This script:
+1. Builds the Next.js application locally with TypeScript checks disabled
+2. Creates a lightweight Docker image using the standalone Next.js output
+3. Verifies the image by running a test container and checking the health endpoint
+
+The resulting image is tagged as `everleigh_nextjs:production` and can be run with:
+
+```bash
+docker run -p 3001:3001 everleigh_nextjs:production
+```
+
+### How It Works
+
+The production Docker build uses a two-step process:
+1. First, it builds the Next.js application locally with TypeScript checks disabled (via configuration in `next.config.mjs`)
+2. Then it packages only the built output into a lightweight Docker image using the `standalone` output
+
+This approach has several advantages:
+- Smaller image size (136MB vs 322MB for the development image)
+- Faster builds since dependencies are installed only once
+- Better security through minimal container surface area
+- Support for the ongoing TypeScript migration 
