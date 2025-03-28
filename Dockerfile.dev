@@ -1,0 +1,37 @@
+FROM node:20.11.1-alpine3.19
+
+WORKDIR /app
+
+# Install development tools and dependencies
+RUN apk add --no-cache \
+    curl \
+    git \
+    dumb-init
+
+# Copy package files
+COPY package.json package-lock.json ./
+
+# Install dependencies with clear cache to keep image size down
+# Keep devDependencies for development environment
+RUN npm ci --legacy-peer-deps && \
+    npm cache clean --force
+
+# Set environment variables
+ENV NODE_ENV=development
+ENV PORT=3000
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV WATCHPACK_POLLING=true
+
+# Expose development port
+EXPOSE 3000
+
+# Health check for development
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3000/api/ping || exit 1
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Default command runs development server
+# This will use the mounted source code for hot reloading
+CMD ["npm", "run", "dev"] 

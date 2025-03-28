@@ -2,6 +2,21 @@
 node_modules
 .pnp
 .pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+package-debug.log
+yarn.lock
+npm-debug.log
+
+# TypeScript specific
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+.eslintcache
+coverage/
+*.lcov
+.nyc_output
 
 # Next.js (allow standalone directory)
 # .next
@@ -11,36 +26,73 @@ out
 
 # Build files
 /build
+/dist
 
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Testing
+/.coverage
+/.nyc_output
+/coverage
+*.test.js
+*.test.ts
+*.test.tsx
+*.spec.js
+*.spec.ts
+*.spec.tsx
+/cypress
+/tests
+/__tests__
+/__mocks__
+*.swp
+*.swo
 
 # Git
 .git
+.github
 .gitignore
 
 # Docker
 .dockerignore
 Dockerfile
-docker-compose.yml
-docker-compose.yml.temp
-n8n-simple-compose.yml
+docker-compose*
+*.yml
+*.yaml
 
 # Environment variables
 .env*
 !.env.example
 !.env.local
 
+# Development tools
+.vscode
+.idea
+*.sublime-*
+/.devcontainer
+*.md
+*.mdx
+LICENSE
+.editorconfig
+.prettierrc
+.eslintrc*
+jest.config.*
+tsconfig.test.json
+
+# Migration files
+migration-progress.md
+migration-dashboard.md
+scripts/update-ts-progress.js
+scripts/update-dashboard.js
+
 # Miscellaneous
 .DS_Store
 *.pem
-
-# Backup files
+.tmp
 *.bak
 *.backup
 /backups
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
 # Apache config files
 *.conf 
