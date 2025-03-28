@@ -1,0 +1,41 @@
+FROM node:20-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables
+ENV NODE_ENV production
+ENV PORT 3001
+ENV NEXT_TELEMETRY_DISABLED 1
+
+# Install necessary tools
+RUN apk add --no-cache curl dumb-init
+
+# Copy the standalone output
+COPY .next/standalone ./
+COPY .next/static ./.next/static
+COPY public ./public
+
+# Create a non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    chown -R nextjs:nodejs /app
+
+# Set proper permissions
+RUN chmod 755 /app && \
+    find /app -type d -exec chmod 755 {} \; || true && \
+    find /app -type f -exec chmod 644 {} \; || true && \
+    chmod 755 /app/server.js || echo "Warning: server.js not found"
+
+# Switch to non-root user
+USER nextjs
+
+EXPOSE 3001
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -sf http://localhost:3001/api/ping || exit 1
+
+# Use dumb-init as PID 1
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "server.js"]

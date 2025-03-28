@@ -1,21 +1,14 @@
 #!/bin/bash
 
-# Exit on error
+# This script optimizes the Docker build for the Everleigh application
+# Run with sudo: sudo bash optimize-docker.sh
+
 set -e
 
-echo "🧪 Building production Docker image (TypeScript Migration Compatible)..."
+echo "🔧 Optimizing Docker build for Everleigh..."
 
-echo "🧹 Cleaning up any previous build artifacts..."
-npm run clean || true
-
-echo "🔨 Building Next.js application locally first..."
-# Next.js build with TypeScript checks disabled via next.config.mjs
-npm run build
-
-echo "✅ Local build successful! Now packaging into Docker..."
-
-# Create a multi-stage Dockerfile for production that uses pre-built Next.js app
-cat > Dockerfile.prod << EOL
+# Create the optimized Dockerfile
+cat > Dockerfile.optimized << EOL
 FROM node:20-alpine AS builder
 
 # Set working directory
@@ -23,7 +16,8 @@ WORKDIR /app
 
 # Install production dependencies only
 COPY package*.json ./
-RUN npm ci --only=production --no-audit --no-fund
+# Use legacy-peer-deps to handle dependency conflicts
+RUN npm ci --only=production --no-audit --no-fund --legacy-peer-deps
 
 # Set environment variables
 ENV NODE_ENV production
@@ -74,18 +68,18 @@ ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "server.js"]
 EOL
 
-echo "📝 Created production Dockerfile with multi-stage builds for optimization"
+echo "📝 Created optimized Dockerfile.optimized"
 
-# Build the Docker image using the pre-built Next.js app
-echo "🔨 Building Docker image from pre-built Next.js app..."
-docker build -f Dockerfile.prod -t everleigh_nextjs:production .
+# Build using the optimized Dockerfile
+echo "🔨 Building optimized Docker image..."
+docker build -f Dockerfile.optimized -t everleigh_nextjs:optimized .
 
 echo "✅ Build successful!"
 echo "📋 Image details:"
-docker image ls everleigh_nextjs:production
+docker image ls everleigh_nextjs:optimized
 
 echo "🧪 Running a test container to verify..."
-docker run --rm -d --name everleigh-test -p 3010:3001 everleigh_nextjs:production
+docker run --rm -d --name everleigh-optimized-test -p 3010:3001 everleigh_nextjs:optimized
 
 echo "⏳ Waiting for application to start (15 seconds)..."
 sleep 15
@@ -95,13 +89,15 @@ if curl -sf http://localhost:3010/api/ping; then
   echo "✅ Health check successful!"
 else
   echo "❌ Health check failed! Checking container logs:"
-  docker logs everleigh-test
-  docker stop everleigh-test || true
+  docker logs everleigh-optimized-test
+  docker stop everleigh-optimized-test || true
   exit 1
 fi
 
 echo "🛑 Stopping test container..."
-docker stop everleigh-test
+docker stop everleigh-optimized-test
 
-echo "🎉 Production Docker image built and verified successfully!"
-echo "To run the container: docker run -p 3001:3001 everleigh_nextjs:production" 
+echo "🎉 Optimized Docker image built and verified successfully!"
+echo "Original image size: $(docker image ls everleigh_nextjs:production --format '{{.Size}}')"
+echo "Optimized image size: $(docker image ls everleigh_nextjs:optimized --format '{{.Size}}')"
+echo "To run the container: docker run -p 3001:3001 everleigh_nextjs:optimized" 
