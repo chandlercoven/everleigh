@@ -4,6 +4,13 @@ import { useRouter } from 'next/router';
 import { usePreferencesStore } from '../lib/store';
 import ModernVoiceChat from './VoiceChat';
 
+// Import new component files
+import Navigation from './layout/Navigation';
+import MobileMenu from './layout/MobileMenu';
+import Breadcrumbs from './layout/Breadcrumbs';
+import VoicePanel from './layout/VoicePanel';
+import AccessibilitySkipLink from './layout/AccessibilitySkipLink';
+
 export default function Layout({ children }) {
   const { data: session } = useSession();
   const { theme, uiPreferences } = usePreferencesStore();
@@ -86,228 +93,50 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       {/* Skip to content link for accessibility */}
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-indigo-600 focus:text-white">
-        Skip to content
-      </a>
+      <AccessibilitySkipLink />
       
       {/* Navigation */}
-      <nav className="bg-white dark:bg-gray-800 shadow w-full" aria-label="Main navigation">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <a href="/" className="text-lg font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">Everleigh</a>
-              </div>
-              {/* Desktop navigation */}
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                {getNavigationLinks(router.pathname).map((link) => (
-                  <a
-                    key={link.name}
-                    href={link.href}
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      link.current
-                        ? 'border-indigo-500 text-gray-900 dark:text-white'
-                        : 'border-transparent text-gray-500 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
-                    aria-current={link.current ? 'page' : undefined}
-                  >
-                    {link.name}
-                  </a>
-                ))}
-              </div>
-            </div>
-            
-            <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
-              {/* User info display */}
-              {session && (
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {session.user?.name || session.user?.email || 'User'}
-                </span>
-              )}
-              
-              {/* Sign out button */}
-              <button
-                onClick={async () => {
-                  await signOut({ callbackUrl: '/' });
-                }}
-                className="h-10 px-4 rounded-md shadow
-                  bg-red-600 hover:bg-red-700 text-white
-                  flex items-center justify-center"
-              >
-                Sign out
-              </button>
-            </div>
-            
-            {/* Voice Assistant Button */}
-            <button
-              onClick={toggleVoicePanel}
-              className="h-10 px-4 rounded-md shadow
-                      bg-gradient-to-r from-indigo-600 to-indigo-500 
-                      hover:from-indigo-700 hover:to-indigo-600
-                      flex items-center justify-center
-                      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
-                      transition-all duration-300"
-              aria-label="Toggle voice assistant"
-              aria-expanded={isVoicePanelVisible}
-            >
-              <svg className="w-5 h-5 text-white mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-              <span className="text-white text-sm font-medium">Voice</span>
-            </button>
-            
-            {/* Mobile menu button */}
-            <div className="flex items-center sm:hidden">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-                aria-controls="mobile-menu"
-                aria-expanded={isMobileMenuOpen}
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              >
-                <span className="sr-only">Open main menu</span>
-                {isMobileMenuOpen ? (
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                ) : (
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+      <Navigation 
+        navigationLinks={getNavigationLinks(router.pathname)}
+        session={session}
+        toggleVoicePanel={toggleVoicePanel}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+        isMobileMenuOpen={isMobileMenuOpen}
+      />
 
-        {/* Mobile menu */}
-        <div className={`${isMobileMenuOpen ? 'block' : 'hidden'} sm:hidden`} id="mobile-menu">
-          <div className="pt-2 pb-3 space-y-1">
-            {getNavigationLinks(router.pathname).map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
-                  link.current
-                    ? 'border-indigo-500 bg-indigo-50 dark:bg-gray-700 text-indigo-700 dark:text-indigo-300'
-                    : 'border-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-                aria-current={link.current ? 'page' : undefined}
-              >
-                {link.name}
-              </a>
-            ))}
-            {/* Mobile voice assistant button */}
-            <button
-              onClick={toggleVoicePanel}
-              className="w-full text-left pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-              aria-label="Toggle voice assistant"
-            >
-              Voice Assistant
-            </button>
-          </div>
-          {/* Mobile user menu */}
-          {session && session.user && (
-            <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-600">
-              <div className="flex items-center px-4">
-                {/* User avatar */}
-                {session.user?.image && (
-                  <div className="flex-shrink-0">
-                    <img className="h-10 w-10 rounded-full" src={session.user.image} alt="" />
-                  </div>
-                )}
-                <div className="ml-3">
-                  <div className="text-base font-medium text-gray-800 dark:text-white">
-                    {session.user?.name || 'User'}
-                  </div>
-                  <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {session.user?.email || ''}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Mobile sign out */}
-              <div className="mt-3 space-y-1">
-                <button
-                  onClick={() => signOut({ callbackUrl: '/' })}
-                  className="w-full text-left px-4 py-2 text-base font-medium text-gray-500 dark:text-gray-300 hover:text-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  Sign out
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
+      {/* Mobile menu */}
+      <MobileMenu 
+        isOpen={isMobileMenuOpen}
+        navigationLinks={getNavigationLinks(router.pathname)}
+        session={session}
+        toggleVoicePanel={toggleVoicePanel}
+      />
 
       {/* Breadcrumbs */}
       {pathSegments.length > 0 && (
-        <nav className="bg-gray-50 dark:bg-gray-800 px-4 py-3 w-full" aria-label="Breadcrumb">
-          <ol className="max-w-7xl mx-auto flex space-x-2 text-sm">
-            <li>
-              <a href="/" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-                Home
-              </a>
-            </li>
-            {pathSegments.map((segment, index) => {
-              const href = `/${pathSegments.slice(0, index + 1).join('/')}`;
-              const isLast = index === pathSegments.length - 1;
-              
-              return (
-                <li key={segment} className="flex items-center">
-                  <svg className="h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                  </svg>
-                  {isLast ? (
-                    <span className="ml-2 text-gray-700 dark:text-gray-300 font-medium" aria-current="page">
-                      {segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')}
-                    </span>
-                  ) : (
-                    <a href={href} className="ml-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-                      {segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')}
-                    </a>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </nav>
+        <Breadcrumbs pathSegments={pathSegments} />
       )}
       
       {/* Loading indicator */}
       {isNavigating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-20" aria-live="polite" role="status">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg flex items-center">
-            <div className="animate-spin h-5 w-5 border-t-2 border-b-2 border-indigo-600 rounded-full mr-3"></div>
-            <span>Loading...</span>
-          </div>
-        </div>
+        <div className="fixed top-0 left-0 w-full h-1 bg-indigo-600 animate-pulse z-50" />
       )}
-
-      {/* Main Content */}
-      <main id="main-content" className="relative">
+      
+      {/* Voice Chat panel */}
+      <VoicePanel 
+        isVisible={isVoicePanelVisible}
+        onClose={toggleVoicePanel}
+      />
+      
+      {/* Main content */}
+      <main id="main-content" className="flex-grow p-4 sm:p-6">
         {children}
       </main>
       
-      {/* Fixed Voice Assistant Button for mobile */}
-      <button
-        onClick={toggleVoicePanel}
-        className="sm:hidden fixed z-50 bottom-6 right-6 h-14 w-14 rounded-full shadow-lg 
-                  bg-gradient-to-r from-indigo-600 to-indigo-500 
-                  hover:from-indigo-700 hover:to-indigo-600
-                  flex items-center justify-center
-                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
-                  transition-all duration-300"
-        aria-label="Toggle voice assistant"
-        aria-expanded={isVoicePanelVisible}
-      >
-        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-        </svg>
-      </button>
-      
-      {/* Voice Chat Panel */}
-      {session && <ModernVoiceChat />}
+      {/* Footer */}
+      <footer className="mt-auto py-4 px-6 bg-white dark:bg-gray-800 shadow-inner text-center text-sm text-gray-500 dark:text-gray-400">
+        <p>Everleigh © {new Date().getFullYear()} - An intelligent voice assistant</p>
+      </footer>
     </div>
   );
 } 
