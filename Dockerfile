@@ -1,4 +1,4 @@
-FROM node:20.11.1-alpine3.19@sha256:0a9e7612b1e33299e8354c4bf8b51f16542b0c44fe28146f331c10b7970efe94 AS deps
+FROM node:20-alpine AS deps
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ RUN npm ci --legacy-peer-deps && \
     npm cache clean --force
 
 # Builder stage
-FROM node:20.11.1-alpine3.19@sha256:0a9e7612b1e33299e8354c4bf8b51f16542b0c44fe28146f331c10b7970efe94 AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Accept build arguments for TypeScript migration
@@ -61,7 +61,7 @@ RUN SKIP_TYPE_CHECK=true npm run build
 RUN npm prune --production
 
 # Production image
-FROM node:20.11.1-alpine3.19@sha256:0a9e7612b1e33299e8354c4bf8b51f16542b0c44fe28146f331c10b7970efe94 AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 # Install curl for healthcheck and dumb-init for proper PID 1 behavior
