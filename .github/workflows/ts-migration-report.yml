@@ -1,0 +1,44 @@
+name: TypeScript Migration Report
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.jsx'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  update-migration-progress:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for git log commands
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Update TypeScript Migration Progress
+        run: |
+          node scripts/update-ts-progress.js
+          
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          
+      - name: Commit and push report
+        run: |
+          git add migration-progress.md migration-dashboard.md
+          git diff --staged --quiet || git commit -m "Update TypeScript migration progress report [skip ci]"
+          git push 
