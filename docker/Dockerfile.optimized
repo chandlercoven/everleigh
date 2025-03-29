@@ -1,6 +1,25 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
 # Set working directory
+WORKDIR /app
+
+# Install production dependencies only
+COPY package*.json ./
+# Use legacy-peer-deps to handle dependency conflicts
+RUN npm ci --only=production --no-audit --no-fund --legacy-peer-deps
+
+# Set environment variables
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
+
+# Use the standalone output from the pre-built Next.js app
+COPY .next/standalone ./
+COPY .next/static ./.next/static
+COPY public ./public
+
+# Final stage
+FROM node:20-alpine AS runner
+
 WORKDIR /app
 
 # Set environment variables
@@ -8,18 +27,15 @@ ENV NODE_ENV production
 ENV PORT 3001
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Install necessary tools
+# Install only the necessary tools
 RUN apk add --no-cache curl dumb-init
-
-# Copy the standalone output
-COPY .next/standalone ./
-COPY .next/static ./.next/static
-COPY public ./public
 
 # Create a non-root user
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs && \
-    chown -R nextjs:nodejs /app
+    adduser --system --uid 1001 nextjs
+
+# Copy from builder stage
+COPY --from=builder --chown=nextjs:nodejs /app/ ./
 
 # Set proper permissions
 RUN chmod 755 /app && \
@@ -38,4 +54,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Use dumb-init as PID 1
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "run", "start:standalone"]
+CMD ["node", "server.js"]

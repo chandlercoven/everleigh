@@ -1,0 +1,227 @@
+version: '3.3'
+
+services:
+  # Next.js Application
+  nextjs:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=mongodb://${MONGO_USERNAME:-everleighAdmin}:${MONGO_PASSWORD:-EverleighAdmin2685a57376c7f8ab}@localhost:27018/everleigh?authSource=admin
+      - NEXTAUTH_URL=https://everleigh.ai
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-everleigh-is-awesome-7ceefbba4dd2652dfae6ec6d216fcebf}
+      - NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
+      - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+      - REDIS_URL=redis://${REDIS_USER:-}:${REDIS_PASSWORD:-}@localhost:6381
+      - DISABLE_REDIS=false
+      - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      - ../config/env/.env.local:/app/.env.local:ro
+      - ../livekit.yaml:/app/livekit.yaml:ro
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - everleigh-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+        tag: "{{.Name}}/{{.ID}}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+      - /run/lock
+
+  # Redis Cache
+  redis:
+    image: redis:7.2.4-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6381:6379"
+    command: redis-server --appendonly yes --requirepass "${REDIS_PASSWORD:-}" --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - everleigh-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    stop_grace_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+      - /run/lock
+
+  # n8n Workflow Automation
+  n8n:
+    image: n8nio/n8n:0.214.3
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_HOST=localhost
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-EverleighN8n}
+      - NODE_ENV=production
+      - N8N_LOG_LEVEL=info
+      - GENERIC_TIMEZONE=UTC
+      - N8N_DIAGNOSTICS_ENABLED=false
+    command: /bin/sh -c "sleep 5; n8n start"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    networks:
+      - everleigh-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "n8n"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    stop_grace_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+      - /run/lock
+
+  # LiveKit Server
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7880:7880"
+      - "127.0.0.1:7881:7881/udp"
+      - "127.0.0.1:7882:7882/udp"
+    volumes:
+      - ../livekit.yaml:/livekit.yaml:ro
+    command: --config /livekit.yaml
+    networks:
+      - everleigh-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    stop_grace_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+      - /run/lock
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0.14
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27018:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-everleighAdmin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-EverleighAdmin2685a57376c7f8ab}
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+    networks:
+      - everleigh-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: ["--bind_ip_all", "--auth", "--wiredTigerCacheSizeGB", "0.5"]
+    stop_grace_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp
+      - /run
+      - /run/lock
+
+networks:
+  everleigh-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  n8n-data:
+    driver: local
+  mongodb-data:
+    driver: local
+  mongodb-config:
+    driver: local
+  redis-data:
+    driver: local 

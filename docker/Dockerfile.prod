@@ -38,4 +38,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Use dumb-init as PID 1
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "run", "start:standalone"]
+CMD ["node", "server.js"]
