@@ -1,6 +1,8 @@
 // VoiceChatPanel component - handles the panel UI and interactions
 import { forwardRef, useState, useEffect } from 'react';
 import { usePreferencesStore } from '../../lib/store';
+import { useRouter } from 'next/router';
+import { useVoiceChatStore } from '../../lib/store';
 
 const VoiceChatPanel = forwardRef(({ children }, ref) => {
   const [isPanelOpen, setIsPanelOpen] = useState(true);
@@ -96,6 +98,17 @@ const VoiceChatPanel = forwardRef(({ children }, ref) => {
     my-2
   `.trim();
   
+  const router = useRouter();
+  const { conversationId, setConversationId } = useVoiceChatStore();
+  
+  // Extract conversationId from URL if present
+  useEffect(() => {
+    if (router.query && router.query.conversationId) {
+      setConversationId(router.query.conversationId);
+      console.log('VoiceChat: Loaded conversation ID from URL:', router.query.conversationId);
+    }
+  }, [router.query, setConversationId]);
+  
   return (
     <div 
       ref={ref}
@@ -111,6 +124,13 @@ const VoiceChatPanel = forwardRef(({ children }, ref) => {
       >
         <div className={handleBarClasses}></div>
       </div>
+      
+      {/* Conversation ID indicator */}
+      {conversationId && (
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          Conversation ID: {conversationId.substring(0, 8)}...
+        </div>
+      )}
       
       {/* Panel content */}
       <div className="panel-content p-4">

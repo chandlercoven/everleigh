@@ -1,21 +1,14 @@
 port: 7880
 rtc:
-  port_range_start: 7881
-  port_range_end: 7882
-  tcp_port: 7883
-
-log_level: info
-
+  port_range_start: 50000
+  port_range_end: 50100
+  tcp_port: 7881
+  udp_port: 7882
 keys:
-  # These keys should be changed in production
-  everleighapi: everleighsecret
-
-# Redis is optional but recommended for production
-# redis:
-#   address: redis:6379
-#   username: ""
-#   password: ""
-#   db: 0
-
-# Enable Prometheus metrics
-# prometheus_port: 6789 
+  everleigh_d081a48ef71a4bd7: 6e84c1d423c7a67c8e298c47187ac2c00e8abc49aec8493e60dc1ad29c644f0b
+logging:
+  json: false
+  level: info
+redis:
+  address: redis:6379
+  db: 0 
