@@ -1,0 +1,57 @@
+name: Dependencies
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Run weekly on Sunday
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Check for outdated dependencies
+        run: npm outdated
+        
+      - name: Update dependencies
+        run: |
+          npm update
+          npm audit fix
+          
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: 'chore: update dependencies'
+          title: 'chore: update dependencies'
+          body: |
+            Automated dependency update
+            
+            This PR updates the project dependencies to their latest versions.
+            
+            ### Changes
+            - Updated npm packages
+            - Fixed security vulnerabilities
+            
+            ### Testing
+            - [ ] Run tests
+            - [ ] Check build
+            - [ ] Verify functionality
+            
+      - name: Run tests on PR
+        if: github.event_name == 'pull_request'
+        run: npm test
+        
+      - name: Run security scan
+        if: github.event_name == 'pull_request'
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }} 
