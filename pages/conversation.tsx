@@ -23,8 +23,12 @@ export default function ConversationPage() {
     conversationalUI: false,
     uiComponents: false
   });
+  const [isBrowser, setIsBrowser] = useState<boolean>(false);
 
   useEffect(() => {
+    // Set browser flag
+    setIsBrowser(true);
+    
     // Log component loading status
     console.log('ConversationalUI loaded:', !!ConversationalUI);
     
@@ -80,12 +84,14 @@ export default function ConversationPage() {
             </div>
           </div>
           
-          {/* Component status indicator (remove in production) */}
-          <div className="mb-4 p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono">
-            <p>Component Status: {JSON.stringify(componentStatus)}</p>
-          </div>
+          {/* Component status indicator (only show in development) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-4 p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono">
+              <p>Component Status: {JSON.stringify(componentStatus)}</p>
+            </div>
+          )}
           
-          {showDemo && (
+          {showDemo && isBrowser && (
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
               <ConversationalUI />
             </div>

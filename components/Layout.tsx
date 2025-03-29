@@ -32,11 +32,22 @@ export default function Layout({ children }: LayoutProps) {
   const { theme, uiPreferences } = usePreferencesStore();
   const [isVoicePanelVisible, setIsVoicePanelVisible] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const router = useRouter();
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
+  const [isBrowser, setIsBrowser] = useState<boolean>(false);
+  const [pathSegments, setPathSegments] = useState<string[]>([]);
+  const [currentPath, setCurrentPath] = useState<string>('');
   
-  // Get current path for breadcrumbs
-  const pathSegments = router.asPath.split('/').filter(segment => segment);
+  // Initialize router only on client side
+  const router = typeof window !== 'undefined' ? useRouter() : null;
+  
+  // Client-side initialization
+  useEffect(() => {
+    setIsBrowser(true);
+    if (router) {
+      setPathSegments(router.asPath.split('/').filter(segment => segment));
+      setCurrentPath(router.pathname);
+    }
+  }, [router?.asPath, router?.pathname]);
   
   // Toggle voice panel visibility
   const toggleVoicePanel = () => {
@@ -84,6 +95,8 @@ export default function Layout({ children }: LayoutProps) {
   
   // Add navigation event listener for loading states
   useEffect(() => {
+    if (!router) return;
+    
     const handleStart = () => setIsNavigating(true);
     const handleComplete = () => setIsNavigating(false);
 
@@ -106,14 +119,22 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Chat', href: '/conversation', current: pathname === '/conversation' },
   ];
   
+  // Default navigation links for SSR
+  const defaultNavLinks: NavigationLink[] = [
+    { name: 'Home', href: '/', current: false },
+    { name: 'Conversations', href: '/conversations', current: false },
+    { name: 'Voice Assistant', href: '/modern', current: false },
+    { name: 'Chat', href: '/conversation', current: false },
+  ];
+  
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       {/* Skip to content link for accessibility */}
       <AccessibilitySkipLink />
       
-      {/* Navigation */}
+      {/* Navigation - use currentPath only when in browser */}
       <Navigation 
-        navigationLinks={getNavigationLinks(router.pathname)}
+        navigationLinks={isBrowser ? getNavigationLinks(currentPath) : defaultNavLinks}
         session={session}
         toggleVoicePanel={toggleVoicePanel}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
@@ -123,13 +144,13 @@ export default function Layout({ children }: LayoutProps) {
       {/* Mobile menu */}
       <MobileMenu 
         isOpen={isMobileMenuOpen}
-        navigationLinks={getNavigationLinks(router.pathname)}
+        navigationLinks={isBrowser ? getNavigationLinks(currentPath) : defaultNavLinks}
         session={session}
         toggleVoicePanel={toggleVoicePanel}
       />
 
-      {/* Breadcrumbs */}
-      {pathSegments.length > 0 && (
+      {/* Breadcrumbs - only render on client side when we have path segments */}
+      {isBrowser && pathSegments.length > 0 && (
         <Breadcrumbs pathSegments={pathSegments} />
       )}
       
@@ -139,10 +160,12 @@ export default function Layout({ children }: LayoutProps) {
       )}
       
       {/* Voice Chat panel */}
-      <VoicePanel 
-        isVisible={isVoicePanelVisible}
-        onClose={toggleVoicePanel}
-      />
+      {isBrowser && (
+        <VoicePanel 
+          isVisible={isVoicePanelVisible}
+          onClose={toggleVoicePanel}
+        />
+      )}
       
       {/* Main content */}
       <main id="main-content" className="flex-grow p-4 sm:p-6">

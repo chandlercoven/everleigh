@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import VoiceChat from '../components/VoiceChat/index';
 import VoiceLabChat from '../components/VoiceLabChat';
@@ -17,7 +17,33 @@ const Home: NextPage = () => {
   const [showVoiceChat, setShowVoiceChat] = useState<boolean>(false);
   const [showLabChat, setShowLabChat] = useState<boolean>(true);
   const [showWorkflow, setShowWorkflow] = useState<boolean>(false);
-  const router = useRouter();
+  const [isBrowser, setIsBrowser] = useState<boolean>(false);
+  
+  // Initialize router only on client side
+  const router = typeof window !== 'undefined' ? useRouter() : null;
+  
+  // Client-side initialization
+  useEffect(() => {
+    setIsBrowser(true);
+  }, []);
+  
+  // Navigate to conversation page - client-side only
+  const navigateToConversation = () => {
+    if (router) {
+      router.push('/conversation');
+    } else if (isBrowser) {
+      window.location.href = '/conversation';
+    }
+  };
+  
+  // Navigate to conversations history page - client-side only
+  const navigateToHistory = () => {
+    if (router) {
+      router.push('/conversations');
+    } else if (isBrowser) {
+      window.location.href = '/conversations';
+    }
+  };
 
   return (
     <Layout>
@@ -51,7 +77,7 @@ const Home: NextPage = () => {
             </button>
 
             <button 
-              onClick={() => router.push('/conversation')}
+              onClick={navigateToConversation}
               className="px-4 py-2 rounded-md font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Try New Conversational UI
@@ -94,7 +120,7 @@ const Home: NextPage = () => {
                 </button>
                 
                 <button 
-                  onClick={() => router.push('/conversations')}
+                  onClick={navigateToHistory}
                   className="px-4 py-2 rounded-md font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
                 >
                   View Conversation History

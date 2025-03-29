@@ -40,26 +40,22 @@ export const config = {
   },
 };
 
-/**
- * Response data interfaces
- */
+// Success response shape
 interface SuccessResponse {
   text: string;
-  status: 'success';
-  confidence?: number;
-  language?: string;
+  status: string;
   processingTimeMs: number;
   timestamp: string;
 }
 
+// Error response shape
 interface ErrorResponse {
   error: {
     message: string;
     code: string;
     details?: any;
-    allowedMethods?: string[];
   };
-  status: 'error';
+  status: string;
   timestamp: string;
 }
 
@@ -91,29 +87,29 @@ export default async function handler(
   // Enable detailed logging in development or with DEBUG_API flag
   const enableDebug = process.env.NODE_ENV === 'development' || process.env.DEBUG_API === 'true';
   
-  // Request start time for performance tracking
+  // Record request start time
   const requestStartTime = Date.now();
   
-  // Helper for consistent debug logging
-  const logInfo = (message: string, data: Record<string, any> = {}) => {
-    if (enableDebug) {
-      console.log(`[${new Date().toISOString()}] [Transcribe API] ${message}`, data);
-    }
-  };
-  
+  // Logging function
+  function logInfo(message: string, data: any = {}) {
+    if (!enableDebug) return;
+    
+    console.log(`[${new Date().toISOString()}] [Transcribe API] ${message}`, data);
+  }
+
   logInfo('Received transcription request', {
     method: req.method,
+    url: req.url,
     contentType: req.headers['content-type'],
     contentLength: req.headers['content-length'],
   });
 
-  // Method validation
+  // Only allow POST method
   if (req.method !== 'POST') {
-    return res.status(405).json({ 
+    return res.status(405).json({
       error: {
-        message: 'Method not allowed', 
-        code: 'method_not_allowed',
-        allowedMethods: ['POST']
+        message: 'Method Not Allowed',
+        code: 'method_not_allowed'
       },
       status: 'error',
       timestamp: new Date().toISOString()
