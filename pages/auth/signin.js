@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 
-export default function SignIn() {
+// Client-side only component to handle router-dependent logic
+const SignInClient = () => {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [credentials, setCredentials] = useState({ email: '', password: '' });
@@ -13,6 +15,42 @@ export default function SignIn() {
     router.push('/');
     return null;
   }
+
+  useEffect(() => {
+    // Function to detect circular references in the URL
+    const detectAndFixRecursion = () => {
+      // Get the current URL's query parameters
+      const { callbackUrl } = router.query;
+      
+      if (!callbackUrl) return;
+      
+      // Check if the callbackUrl contains /auth/signin, indicating recursion
+      if (callbackUrl.includes('/auth/signin')) {
+        console.log('[Auth] Detected recursive callbackUrl:', callbackUrl);
+        
+        // Replace the URL with one without the recursive parameter
+        router.replace('/auth/signin', undefined, { shallow: true });
+        
+        // Log this issue for monitoring
+        try {
+          fetch('/api/auth-monitor', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: window.location.href,
+              baseUrl: window.location.origin,
+              referrer: document.referrer,
+              redirectResult: 'Detected and prevented recursion'
+            })
+          });
+        } catch (err) {
+          console.error('[Auth] Error logging redirect issue:', err);
+        }
+      }
+    };
+    
+    detectAndFixRecursion();
+  }, [router]);
 
   const handleCredentialsChange = (e) => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
@@ -170,4 +208,31 @@ export default function SignIn() {
       `}</style>
     </div>
   );
+};
+
+// Dynamic import for client-side router code
+const SignInClientSide = dynamic(() => Promise.resolve(SignInClient), { ssr: false });
+
+export default function SignIn() {
+  const { data: session, status } = useSession();
+  
+  // Server-side check for authenticated state
+  if (status === 'authenticated') {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
+    return null;
+  }
+
+  // Show loading state during session check
+  if (status === 'loading') {
+    return (
+      <div className="auth-loading flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // Render client-side component when not authenticated
+  return <SignInClientSide />;
 } 

@@ -4,6 +4,18 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import clientPromise from "../../../lib/mongodb";
 
+// Add TypeScript declaration for session user type
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id?: string | null;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    }
+  }
+}
+
 // Configure authentication options
 export const authOptions: NextAuthOptions = {
   adapter: MongoDBAdapter(clientPromise),
@@ -55,6 +67,13 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string || null;
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      // Optional: log the redirect for debugging
+      console.log("Redirect callback triggered. Ignoring provided url and callbackUrl.");
+      
+      // Always redirect to a fixed safe URL (homepage), ignoring any dynamic URLs
+      return baseUrl;  // This will send users to "https://everleigh.ai"
     }
   },
   pages: {
